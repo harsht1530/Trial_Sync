@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -20,7 +21,7 @@ interface SidebarProps {
 
 const navigation = [
   { id: "dashboard", name: "Dashboard", icon: LayoutDashboard, path: "/" },
-  { id: "patients", name: "Patients", icon: Users, path: "/patients" },
+  { id: "patients", name: "Subject", icon: Users, path: "/patients" },
   { id: "validation", name: "Data Validation", icon: ClipboardCheck, path: "/validation" },
   { id: "epro", name: "ePRO", icon: ClipboardList, path: "/epro" },
   { id: "communications", name: "Communications", icon: MessageSquare, path: "/communications" },
@@ -38,6 +39,19 @@ const bottomNav = [
 export function Sidebar({ activeTab: propActiveTab, onTabChange }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [currentLogoIndex, setCurrentLogoIndex] = useState(0);
+
+  const logos = [
+    { src: "https://multiplierai.co/gmbtest/clinic-white.png", alt: "Clinic Logo", className: "w-40 mt-2" },
+    { src: "https://multiplierai.co/gmbtest/Logo_Applied-Innovation-Exchange_White.png", alt: "AIE Logo", className: "w-36 mt-4" }
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentLogoIndex((prev) => (prev + 1) % logos.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Determine active tab based on current path
   const getActiveTabFromPath = () => {
@@ -61,62 +75,91 @@ export function Sidebar({ activeTab: propActiveTab, onTabChange }: SidebarProps)
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar border-r border-sidebar-border">
+      {/* Global Gradient Defs for Icons */}
+      <svg width="0" height="0" className="absolute">
+        <defs>
+          <linearGradient id="icon-gradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#0058AB" /> {/* Capgemini Blue */}
+            <stop offset="100%" stopColor="#00D5D0" /> {/* Turquoise */}
+          </linearGradient>
+        </defs>
+      </svg>
+
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 px-6 border-b border-sidebar-border">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
-          <Activity className="h-5 w-5 text-primary-foreground" />
+          {/* <Activity className="h-5 w-5 text-primary-foreground" /> */}
+          <img src="https://multiplierai.co/gmbtest/Capgemini_Primary-spade_Capgemini-white.png" alt="Capgemini Logo" />
         </div>
-        <div>
-          <h1 className="text-lg font-semibold text-sidebar-foreground">C.L.I.N.I.K</h1>
-          <p className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider">Multi Agentic AI Platform</p>
+        <div className="ms-20 h-14 flex items-center justify-center overflow-hidden">
+          {logos.map((logo, index) => (
+            <img
+              key={logo.src}
+              className={cn(
+                logo.className,
+                "transition-opacity duration-1000 absolute",
+                index === currentLogoIndex ? "opacity-100" : "opacity-0 pointer-events-none"
+              )}
+              src={logo.src}
+              alt={logo.alt}
+            />
+          ))}
         </div>
       </div>
-
       {/* Main Navigation */}
       <nav className="flex flex-col gap-1 p-4">
         <p className="px-3 mb-2 text-[10px] font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
           Main Menu
         </p>
-        {navigation.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => handleNavClick(item)}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-              activeTab === item.id
-                ? "bg-sidebar-accent text-sidebar-primary"
-                : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-            )}
-          >
-            <item.icon className={cn(
-              "h-5 w-5 transition-colors",
-              activeTab === item.id ? "text-sidebar-primary" : ""
-            )} />
-            {item.name}
-            {activeTab === item.id && (
-              <div className="ml-auto h-1.5 w-1.5 rounded-full bg-sidebar-primary" />
-            )}
-          </button>
-        ))}
+        {navigation.map((item) => {
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleNavClick(item)}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                isActive
+                  ? "bg-sidebar-accent text-sidebar-primary"
+                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+              )}
+            >
+              <item.icon
+                className="h-5 w-5 transition-colors"
+                stroke={isActive ? "url(#icon-gradient)" : "currentColor"}
+              />
+              {item.name}
+              {isActive && (
+                <div className="ml-auto h-1.5 w-1.5 rounded-full bg-sidebar-primary" />
+              )}
+            </button>
+          );
+        })}
       </nav>
 
       {/* Bottom Navigation */}
       <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border">
-        {bottomNav.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => handleNavClick(item)}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 w-full",
-              activeTab === item.id
-                ? "bg-sidebar-accent text-sidebar-primary"
-                : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-            )}
-          >
-            <item.icon className="h-5 w-5" />
-            {item.name}
-          </button>
-        ))}
+        {bottomNav.map((item) => {
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleNavClick(item)}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 w-full",
+                isActive
+                  ? "bg-sidebar-accent text-sidebar-primary"
+                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+              )}
+            >
+              <item.icon
+                className="h-5 w-5"
+                stroke={isActive ? "url(#icon-gradient)" : "currentColor"}
+              />
+              {item.name}
+            </button>
+          );
+        })}
       </div>
     </aside>
   );

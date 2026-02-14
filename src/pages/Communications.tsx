@@ -9,7 +9,7 @@ export function Communications() {
       <Sidebar />
       <div className="flex flex-col flex-1 pl-64">
         <Header />
-        <main className="flex-1 p-6 bg-secondary/20">
+        <main className="flex-1 p-6 bg-background">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <PatientReminders patientId="P001" />
             <PatientChatbot patientId="P001" patientName="John Doe" />

@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Outfit', 'system-ui', 'sans-serif'],
+        sans: ['Ubuntu', 'Verdana', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -67,6 +67,19 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+        },
+        capgemini: {
+          dark: "#121A38",
+          blue: "#0058AB",
+          light: "#1DB8F2",
+          turquoise: "#00D5D0",
+          yellow: "#FEB100",
+          orange: "#FF816E",
+          lilac: "#D4D3F1",
+          teal: "#00828E",
+          terracotta: "#BE4D00",
+          deepRed: "#8F3237",
+          purple: "#71609E",
         },
       },
       borderRadius: {

@@ -1,124 +1,141 @@
+@import '@fontsource/ubuntu/300.css';
+@import '@fontsource/ubuntu/400.css';
+@import '@fontsource/ubuntu/500.css';
+@import '@fontsource/ubuntu/700.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import '@fontsource/outfit/400.css';
-@import '@fontsource/outfit/500.css';
-@import '@fontsource/outfit/600.css';
-@import '@fontsource/outfit/700.css';
 
 /* TrialSync - Patient Trial Automation Platform
    Capgemini-inspired design system */
 
 @layer base {
   :root {
-    /* Core brand - Deep navy blues inspired by Capgemini */
+    /* Core brand - Capgemini Palette */
+    /* Backgrounds: Neutral very light blue/gray */
     --background: 210 25% 98%;
-    --foreground: 213 40% 12%;
+    /* Foreground: Capgemini Dark Blue */
+    --foreground: 227 51% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 213 40% 12%;
+    --card-foreground: 227 51% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 213 40% 12%;
+    --popover-foreground: 227 51% 15%;
 
-    /* Primary - Purple theme #874C8F */
-    --primary: 293 31% 43%;
+    /* Primary - Capgemini Blue #0058AB */
+    --primary: 209 100% 34%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Light blue-gray */
-    --secondary: 293 20% 94%;
-    --secondary-foreground: 293 40% 20%;
+    /* Secondary - Light Blue #1DB8F2 */
+    --secondary: 196 88% 53%;
+    --secondary-foreground: 227 51% 15%;
 
-    --muted: 293 15% 92%;
-    --muted-foreground: 293 15% 45%;
+    /* Muted - Lilac #D4D3F1 (approximate for background use) or very light grey */
+    --muted: 242 45% 89%;
+    --muted-foreground: 227 30% 40%;
 
-    /* Accent - Lighter purple */
-    --accent: 293 40% 60%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent - Turquoise #00D5D0 */
+    --accent: 178 100% 42%;
+    --accent-foreground: 227 51% 15%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Success - For validations */
-    --success: 152 60% 42%;
+    /* Success - Teal #00828E for validations? Or standard green. Let's use Teal as brand success. */
+    --success: 185 100% 28%;
     --success-foreground: 0 0% 100%;
 
-    /* Warning - For alerts */
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    /* Warning - Yellow #FEB100 */
+    --warning: 42 100% 50%;
+    --warning-foreground: 227 51% 15%;
 
-    --border: 293 20% 88%;
-    --input: 293 20% 88%;
-    --ring: 293 31% 43%;
+    --border: 210 20% 90%;
+    --input: 210 20% 90%;
+    --ring: 209 100% 34%;
 
     --radius: 0.75rem;
 
     /* Custom gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(293 31% 43%) 0%, hsl(293 40% 60%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(213 40% 12%) 0%, hsl(293 31% 30%) 50%, hsl(293 40% 40%) 100%);
+    /* Capgemini Blue to Light Blue */
+    --gradient-primary: linear-gradient(135deg, hsl(209 100% 34%) 0%, hsl(196 88% 53%) 100%);
+    /* Dark Blue driven hero */
+    --gradient-hero: linear-gradient(135deg, hsl(227 51% 15%) 0%, hsl(209 100% 34%) 100%);
     --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(210 25% 98%) 100%);
     --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
 
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(293 40% 12% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(293 40% 12% / 0.08), 0 2px 4px -2px hsl(293 40% 12% / 0.05);
-    --shadow-lg: 0 10px 15px -3px hsl(293 40% 12% / 0.1), 0 4px 6px -4px hsl(293 40% 12% / 0.05);
-    --shadow-glow: 0 0 40px hsl(293 31% 43% / 0.15);
+    /* Shadows meant for Dark Blue text usually, adjusting opacity */
+    --shadow-sm: 0 1px 2px 0 hsl(227 51% 15% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(227 51% 15% / 0.08), 0 2px 4px -2px hsl(227 51% 15% / 0.05);
+    --shadow-lg: 0 10px 15px -3px hsl(227 51% 15% / 0.1), 0 4px 6px -4px hsl(227 51% 15% / 0.05);
+    --shadow-glow: 0 0 40px hsl(209 100% 34% / 0.15);
 
-    --sidebar-background: 293 45% 10%;
-    --sidebar-foreground: 293 20% 94%;
-    --sidebar-primary: 293 40% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 293 50% 25%;
-    --sidebar-accent-foreground: 293 20% 94%;
-    --sidebar-border: 293 30% 20%;
-    --sidebar-ring: 293 40% 60%;
+    /* Sidebar - Capgemini Dark Blue #121A38 */
+    --sidebar-background: 227 51% 15%;
+    --sidebar-foreground: 210 20% 98%;
+    --sidebar-primary: 196 88% 53%;
+    /* Light Blue for primary actions in sidebar */
+    --sidebar-primary-foreground: 227 51% 15%;
+    --sidebar-accent: 209 80% 30%;
+    /* Slightly lighter Dark Blue or Capgemini Blue variant */
+    --sidebar-accent-foreground: 210 20% 98%;
+    --sidebar-border: 227 40% 25%;
+    --sidebar-ring: 196 88% 53%;
   }
 
   .dark {
-    --background: 213 40% 8%;
-    --foreground: 210 20% 94%;
+    /* Dark Mode - Capgemini Dark Blue base */
+    --background: 227 51% 10%;
+    /* Slightly darker than brand dark blue for bg */
+    --foreground: 210 20% 98%;
 
-    --card: 213 35% 12%;
-    --card-foreground: 210 20% 94%;
+    --card: 227 51% 15%;
+    /* Brand Dark Blue */
+    --card-foreground: 210 20% 98%;
 
-    --popover: 213 35% 12%;
-    --popover-foreground: 210 20% 94%;
+    --popover: 227 51% 15%;
+    --popover-foreground: 210 20% 98%;
 
-    --primary: 293 50% 60%;
-    --primary-foreground: 293 40% 8%;
+    /* Primary - Light Blue #1DB8F2 pops well on dark */
+    --primary: 196 88% 53%;
+    --primary-foreground: 227 51% 15%;
 
-    --secondary: 293 30% 18%;
-    --secondary-foreground: 293 20% 94%;
+    /* Secondary - Capgemini Blue #0058AB */
+    --secondary: 209 100% 34%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 293 25% 20%;
-    --muted-foreground: 293 15% 60%;
+    --muted: 227 40% 25%;
+    --muted-foreground: 210 20% 70%;
 
-    --accent: 293 100% 45%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent - Turquoise #00D5D0 */
+    --accent: 178 100% 42%;
+    --accent-foreground: 227 51% 15%;
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 60% 45%;
+    --success: 185 100% 40%;
+    /* Lighter Teal */
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 55%;
-    --warning-foreground: 0 0% 0%;
+    --warning: 42 100% 50%;
+    --warning-foreground: 227 51% 15%;
 
-    --border: 293 25% 22%;
-    --input: 293 25% 22%;
-    --ring: 293 50% 60%;
+    --border: 227 40% 25%;
+    --input: 227 40% 25%;
+    --ring: 196 88% 53%;
 
-    --sidebar-background: 213 45% 6%;
-    --sidebar-foreground: 210 20% 94%;
-    --sidebar-primary: 180 70% 50%;
-    --sidebar-primary-foreground: 213 40% 8%;
-    --sidebar-accent: 213 35% 15%;
-    --sidebar-accent-foreground: 210 20% 94%;
-    --sidebar-border: 213 30% 15%;
-    --sidebar-ring: 180 70% 50%;
+    --sidebar-background: 227 60% 8%;
+    /* Even darker */
+    --sidebar-foreground: 210 20% 98%;
+    --sidebar-primary: 178 100% 42%;
+    /* Turquoise */
+    --sidebar-primary-foreground: 227 51% 15%;
+    --sidebar-accent: 227 51% 20%;
+    --sidebar-accent-foreground: 210 20% 98%;
+    --sidebar-border: 227 40% 20%;
+    --sidebar-ring: 178 100% 42%;
   }
 }
 
@@ -129,7 +146,7 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Outfit', system-ui, sans-serif;
+    font-family: 'Ubuntu', 'Verdana', sans-serif;
   }
 }
 

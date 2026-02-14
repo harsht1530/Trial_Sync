@@ -31,7 +31,7 @@ export function PatientProfile() {
       <Sidebar />
       <div className="flex flex-col flex-1 pl-64">
         <Header />
-        <main className="flex-1 p-6 bg-secondary/20">
+        <main className="flex-1 p-6 bg-background">
           <div className="space-y-6">
             <PatientProfileComponent patient={mockPatient} />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

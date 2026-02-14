@@ -2,14 +2,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Calendar, 
-  Building2, 
-  Edit, 
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Building2,
+  Edit,
   MessageSquare,
   AlertCircle
 } from "lucide-react";
@@ -66,7 +66,7 @@ export const PatientProfile = ({ patient }: PatientProfileProps) => {
               {initials}
             </AvatarFallback>
           </Avatar>
-          
+
           <div className="flex-1 pb-2">
             <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
               <CardTitle className="text-2xl">{patient.name}</CardTitle>
@@ -78,7 +78,7 @@ export const PatientProfile = ({ patient }: PatientProfileProps) => {
               </Badge>
             </div>
             <p className="text-muted-foreground mt-1">
-              Patient ID: {patient.id} • {patient.age} years old • {patient.gender}
+              Subject ID: {patient.id} • {patient.age} years old • {patient.gender}
             </p>
           </div>
 

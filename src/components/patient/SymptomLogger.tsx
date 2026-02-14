@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Activity, 
-  Plus, 
-  TrendingUp, 
-  TrendingDown, 
+import {
+  Activity,
+  Plus,
+  TrendingUp,
+  TrendingDown,
   Minus,
   Calendar,
   Clock,
@@ -74,19 +74,19 @@ interface SymptomLoggerProps {
 }
 
 const mockSymptomTypes: SymptomType[] = [
-    { id: "1", name: "Headache", category: "General", description: "Pain in the head" },
-    { id: "2", name: "Nausea", category: "Gastrointestinal", description: "Feeling of sickness with an inclination to vomit" },
-    { id: "3", name: "Fatigue", category: "General", description: "Extreme tiredness" },
-    { id: "4", name: "Dizziness", category: "Neurological", description: "A sensation of spinning around and losing one's balance" },
-    { id: "5", name: "Cough", category: "Respiratory", description: "A sudden, sharp sound as you force air from your lungs" },
+  { id: "1", name: "Headache", category: "General", description: "Pain in the head" },
+  { id: "2", name: "Nausea", category: "Gastrointestinal", description: "Feeling of sickness with an inclination to vomit" },
+  { id: "3", name: "Fatigue", category: "General", description: "Extreme tiredness" },
+  { id: "4", name: "Dizziness", category: "Neurological", description: "A sensation of spinning around and losing one's balance" },
+  { id: "5", name: "Cough", category: "Respiratory", description: "A sudden, sharp sound as you force air from your lungs" },
 ];
 
 const mockPatientSymptoms: PatientSymptom[] = [
-    { id: "1", patient_id: "P001", symptom_type_id: "1", severity: "mild", pain_level: 3, notes: "A dull ache", reported_at: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(), symptom_types: mockSymptomTypes[0] },
-    { id: "2", patient_id: "P001", symptom_type_id: "2", severity: "moderate", pain_level: 6, notes: "Feeling very sick", reported_at: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(), symptom_types: mockSymptomTypes[1] },
-    { id: "3", patient_id: "P001", symptom_type_id: "3", severity: "severe", pain_level: 8, notes: "Completely exhausted", reported_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(), symptom_types: mockSymptomTypes[2] },
-    { id: "4", patient_id: "P001", symptom_type_id: "1", severity: "mild", pain_level: 2, notes: "A slight headache", reported_at: new Date(new Date().setDate(new Date().getDate() - 4)).toISOString(), symptom_types: mockSymptomTypes[0] },
-    { id: "5", patient_id: "P001", symptom_type_id: "4", severity: "moderate", pain_level: 5, notes: "Room is spinning", reported_at: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(), symptom_types: mockSymptomTypes[3] },
+  { id: "1", patient_id: "P001", symptom_type_id: "1", severity: "mild", pain_level: 3, notes: "A dull ache", reported_at: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(), symptom_types: mockSymptomTypes[0] },
+  { id: "2", patient_id: "P001", symptom_type_id: "2", severity: "moderate", pain_level: 6, notes: "Feeling very sick", reported_at: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(), symptom_types: mockSymptomTypes[1] },
+  { id: "3", patient_id: "P001", symptom_type_id: "3", severity: "severe", pain_level: 8, notes: "Completely exhausted", reported_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(), symptom_types: mockSymptomTypes[2] },
+  { id: "4", patient_id: "P001", symptom_type_id: "1", severity: "mild", pain_level: 2, notes: "A slight headache", reported_at: new Date(new Date().setDate(new Date().getDate() - 4)).toISOString(), symptom_types: mockSymptomTypes[0] },
+  { id: "5", patient_id: "P001", symptom_type_id: "4", severity: "moderate", pain_level: 5, notes: "Room is spinning", reported_at: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(), symptom_types: mockSymptomTypes[3] },
 ];
 
 export const SymptomLogger = ({ patientId }: SymptomLoggerProps) => {
@@ -117,11 +117,11 @@ export const SymptomLogger = ({ patientId }: SymptomLoggerProps) => {
     }
 
     const newSymptomData: PatientSymptom = {
-        id: (patientSymptoms.length + 1).toString(),
-        patient_id: patientId,
-        reported_at: new Date().toISOString(),
-        symptom_types: symptomTypes.find(st => st.id === newSymptom.symptom_type_id),
-        ...newSymptom
+      id: (patientSymptoms.length + 1).toString(),
+      patient_id: patientId,
+      reported_at: new Date().toISOString(),
+      symptom_types: symptomTypes.find(st => st.id === newSymptom.symptom_type_id),
+      ...newSymptom
     }
 
     setPatientSymptoms(prev => [newSymptomData, ...prev]);
@@ -144,8 +144,8 @@ export const SymptomLogger = ({ patientId }: SymptomLoggerProps) => {
   const categories = [...new Set(symptomTypes.map(s => s.category))];
 
   // Filter symptoms by category
-  const filteredSymptoms = selectedCategory === "all" 
-    ? patientSymptoms 
+  const filteredSymptoms = selectedCategory === "all"
+    ? patientSymptoms
     : patientSymptoms.filter(s => s.symptom_types?.category === selectedCategory);
 
   // Get symptoms within time range
@@ -220,13 +220,13 @@ export const SymptomLogger = ({ patientId }: SymptomLoggerProps) => {
   const calculateTrend = () => {
     const halfPoint = Math.floor(timeRangeSymptoms.length / 2);
     if (halfPoint === 0) return 'stable';
-    
+
     const recentSymptoms = timeRangeSymptoms.slice(0, halfPoint);
     const olderSymptoms = timeRangeSymptoms.slice(halfPoint);
-    
+
     const recentAvg = recentSymptoms.reduce((acc, s) => acc + (s.pain_level || 0), 0) / recentSymptoms.length;
     const olderAvg = olderSymptoms.reduce((acc, s) => acc + (s.pain_level || 0), 0) / olderSymptoms.length;
-    
+
     if (recentAvg > olderAvg + 1) return 'increasing';
     if (recentAvg < olderAvg - 1) return 'decreasing';
     return 'stable';
@@ -301,7 +301,7 @@ export const SymptomLogger = ({ patientId }: SymptomLoggerProps) => {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Symptom Type</Label>
-                  <Select 
+                  <Select
                     value={newSymptom.symptom_type_id}
                     onValueChange={(v) => setNewSymptom(prev => ({ ...prev, symptom_type_id: v }))}
                   >
@@ -330,7 +330,7 @@ export const SymptomLogger = ({ patientId }: SymptomLoggerProps) => {
 
                 <div className="space-y-2">
                   <Label>Severity</Label>
-                  <Select 
+                  <Select
                     value={newSymptom.severity}
                     onValueChange={(v) => setNewSymptom(prev => ({ ...prev, severity: v as "mild" | "moderate" | "severe" }))}
                   >
@@ -422,7 +422,7 @@ export const SymptomLogger = ({ patientId }: SymptomLoggerProps) => {
               <span className="text-xs font-medium">Avg Pain</span>
             </div>
             <p className="text-2xl font-bold">
-              {timeRangeSymptoms.length > 0 
+              {timeRangeSymptoms.length > 0
                 ? (timeRangeSymptoms.reduce((acc, s) => acc + (s.pain_level || 0), 0) / timeRangeSymptoms.length).toFixed(1)
                 : '—'}
             </p>
@@ -445,26 +445,26 @@ export const SymptomLogger = ({ patientId }: SymptomLoggerProps) => {
                   <AreaChart data={chartData}>
                     <defs>
                       <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#0058AB" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#0058AB" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="date" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
                     <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                    <Tooltip 
-                      contentStyle={{ 
+                    <Tooltip
+                      contentStyle={{
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px'
                       }}
                     />
-                    <Area 
-                      type="monotone" 
-                      dataKey="count" 
-                      stroke="hsl(var(--primary))" 
-                      fillOpacity={1} 
-                      fill="url(#colorCount)" 
+                    <Area
+                      type="monotone"
+                      dataKey="count"
+                      stroke="hsl(var(--primary))"
+                      fillOpacity={1}
+                      fill="url(#colorCount)"
                       name="Symptoms"
                     />
                   </AreaChart>
@@ -481,19 +481,19 @@ export const SymptomLogger = ({ patientId }: SymptomLoggerProps) => {
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="date" className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
                     <YAxis domain={[0, 10]} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                    <Tooltip 
-                      contentStyle={{ 
+                    <Tooltip
+                      contentStyle={{
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px'
                       }}
                     />
-                    <Line 
-                      type="monotone" 
-                      dataKey="avgPain" 
-                      stroke="hsl(var(--destructive))" 
+                    <Line
+                      type="monotone"
+                      dataKey="avgPain"
+                      stroke="#8F3237"
                       strokeWidth={2}
-                      dot={{ fill: 'hsl(var(--destructive))' }}
+                      dot={{ fill: '#8F3237' }}
                       name="Avg Pain"
                     />
                   </LineChart>
@@ -538,12 +538,12 @@ export const SymptomLogger = ({ patientId }: SymptomLoggerProps) => {
                       <div className={cn(
                         "p-2 rounded-lg",
                         symptom.severity === 'severe' ? "bg-destructive/10" :
-                        symptom.severity === 'moderate' ? "bg-warning/10" : "bg-success/10"
+                          symptom.severity === 'moderate' ? "bg-warning/10" : "bg-success/10"
                       )}>
                         <Activity className={cn(
                           "h-4 w-4",
                           symptom.severity === 'severe' ? "text-destructive" :
-                          symptom.severity === 'moderate' ? "text-warning" : "text-success"
+                            symptom.severity === 'moderate' ? "text-warning" : "text-success"
                         )} />
                       </div>
                       <div>
@@ -587,8 +587,8 @@ export const SymptomLogger = ({ patientId }: SymptomLoggerProps) => {
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis type="number" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
                     <YAxis dataKey="name" type="category" tick={{ fill: 'hsl(var(--muted-foreground))' }} width={80} />
-                    <Tooltip 
-                      contentStyle={{ 
+                    <Tooltip
+                      contentStyle={{
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px'
@@ -613,7 +613,7 @@ export const SymptomLogger = ({ patientId }: SymptomLoggerProps) => {
                     }
                     symptomCounts[name].count++;
                   });
-                  
+
                   return Object.values(symptomCounts)
                     .sort((a, b) => b.count - a.count)
                     .slice(0, 5)

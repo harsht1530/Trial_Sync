@@ -98,7 +98,7 @@ export function PatientTable() {
           <thead>
             <tr className="border-b border-border bg-secondary/30">
               <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Patient
+                Subject
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Trial
@@ -124,10 +124,10 @@ export function PatientTable() {
             {patients.map((patient) => {
               const status = statusConfig[patient.status as keyof typeof statusConfig];
               const StatusIcon = status.icon;
-              
+
               return (
-                <tr 
-                  key={patient.id} 
+                <tr
+                  key={patient.id}
                   className="hover:bg-secondary/20 transition-colors cursor-pointer"
                   onClick={() => handlePatientClick(patient.id)}
                 >
@@ -159,7 +159,7 @@ export function PatientTable() {
                           className={cn(
                             "h-full rounded-full transition-all",
                             patient.compliance >= 90 ? "bg-success" :
-                            patient.compliance >= 70 ? "bg-warning" : "bg-destructive"
+                              patient.compliance >= 70 ? "bg-warning" : "bg-destructive"
                           )}
                           style={{ width: `${patient.compliance}%` }}
                         />
@@ -179,8 +179,8 @@ export function PatientTable() {
                     <span className="text-sm text-muted-foreground">{patient.lastVisit}</span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="icon"
                       onClick={(e) => {
                         e.stopPropagation();

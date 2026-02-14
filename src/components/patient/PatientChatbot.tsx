@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Bot, 
-  Send, 
-  Mic, 
-  MicOff, 
-  Volume2, 
+import {
+  Bot,
+  Send,
+  Mic,
+  MicOff,
+  Volume2,
   VolumeX,
   User,
   Sparkles,
@@ -118,7 +118,7 @@ export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) 
 
   const generateBotResponse = (userMessage: string): Message => {
     const lowerMessage = userMessage.toLowerCase();
-    
+
     if (lowerMessage.includes("medication") || lowerMessage.includes("pill") || lowerMessage.includes("dose")) {
       return {
         id: `bot-${Date.now()}`,
@@ -128,7 +128,7 @@ export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) 
         type: "medication"
       };
     }
-    
+
     if (lowerMessage.includes("symptom") || lowerMessage.includes("feeling") || lowerMessage.includes("pain")) {
       return {
         id: `bot-${Date.now()}`,
@@ -139,7 +139,7 @@ export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) 
         metadata: { followUp: true }
       };
     }
-    
+
     if (lowerMessage.includes("visit") || lowerMessage.includes("appointment") || lowerMessage.includes("schedule")) {
       return {
         id: `bot-${Date.now()}`,
@@ -149,7 +149,7 @@ export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) 
         type: "appointment"
       };
     }
-    
+
     if (lowerMessage.includes("emergency") || lowerMessage.includes("serious") || lowerMessage.includes("urgent")) {
       return {
         id: `bot-${Date.now()}`,
@@ -160,7 +160,7 @@ export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) 
         metadata: { severity: "high", followUp: true }
       };
     }
-    
+
     return {
       id: `bot-${Date.now()}`,
       role: "assistant",
@@ -237,7 +237,7 @@ export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) 
   const getMessageStyle = (message: Message) => {
     if (message.role === "system") return "bg-muted/50 text-muted-foreground text-center text-xs py-2";
     if (message.role === "user") return "bg-primary text-primary-foreground ml-auto";
-    
+
     switch (message.type) {
       case "alert":
         return "bg-destructive/10 border border-destructive/20";
@@ -274,7 +274,7 @@ export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) 
               </Badge>
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              For {patientName} • Patient ID: {patientId}
+              For {patientName} • Subject ID: {patientId}
             </p>
           </div>
         </div>
@@ -332,7 +332,7 @@ export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) 
                   </div>
                 </div>
               )}
-              
+
               <div
                 className={cn(
                   "max-w-[80%] rounded-2xl px-4 py-3",

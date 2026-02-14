@@ -8,7 +8,7 @@ export function EPRO() {
       <Sidebar />
       <div className="flex flex-col flex-1 pl-64">
         <Header />
-        <main className="flex-1 p-6 bg-secondary/20">
+        <main className="flex-1 p-6 bg-background">
           <EPROSubmissions patientId="P001" />
         </main>
       </div>

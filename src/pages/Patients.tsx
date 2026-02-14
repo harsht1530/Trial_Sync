@@ -67,7 +67,7 @@ export default function Patients() {
   const filteredPatients = useMemo(() => {
     return allPatients.filter((patient) => {
       // Search filter
-      const matchesSearch = searchQuery === "" || 
+      const matchesSearch = searchQuery === "" ||
         patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         patient.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         patient.trial.toLowerCase().includes(searchQuery.toLowerCase());
@@ -111,15 +111,15 @@ export default function Patients() {
 
       <div className="min-h-screen bg-background">
         <Sidebar />
-        
+
         <div className="ml-64">
           <Header />
-          
+
           <main className="p-8">
             {/* Page Header */}
             <div className="mb-8">
-              <h1 className="text-3xl font-bold text-foreground">Patients</h1>
-              <p className="text-muted-foreground mt-1">Manage and monitor all enrolled patients across trials</p>
+              <h1 className="text-3xl font-bold text-foreground">Subjects</h1>
+              <p className="text-muted-foreground mt-1">Manage and monitor all enrolled subjects across trials</p>
             </div>
 
             {/* Search and Filters */}
@@ -243,7 +243,7 @@ export default function Patients() {
 
               {/* Results count */}
               <div className="mt-4 text-sm text-muted-foreground">
-                Showing {filteredPatients.length} of {allPatients.length} patients
+                Showing {filteredPatients.length} of {allPatients.length} subjects
               </div>
             </div>
 
@@ -254,7 +254,7 @@ export default function Patients() {
                   <thead>
                     <tr className="border-b border-border bg-secondary/30">
                       <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Patient
+                        Subject
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Trial
@@ -283,10 +283,10 @@ export default function Patients() {
                     {filteredPatients.map((patient) => {
                       const status = statusConfig[patient.status as keyof typeof statusConfig];
                       const StatusIcon = status.icon;
-                      
+
                       return (
-                        <tr 
-                          key={patient.id} 
+                        <tr
+                          key={patient.id}
                           className="hover:bg-secondary/20 transition-colors cursor-pointer"
                           onClick={() => handlePatientClick(patient.id)}
                         >
@@ -321,7 +321,7 @@ export default function Patients() {
                                   className={cn(
                                     "h-full rounded-full transition-all",
                                     patient.compliance >= 90 ? "bg-success" :
-                                    patient.compliance >= 70 ? "bg-warning" : "bg-destructive"
+                                      patient.compliance >= 70 ? "bg-warning" : "bg-destructive"
                                   )}
                                   style={{ width: `${patient.compliance}%` }}
                                 />
@@ -341,8 +341,8 @@ export default function Patients() {
                             <span className="text-sm text-muted-foreground">{patient.lastVisit}</span>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="icon"
                               onClick={(e) => {
                                 e.stopPropagation();

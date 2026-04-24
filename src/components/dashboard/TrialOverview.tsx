@@ -1,42 +1,10 @@
+import { useEffect, useState } from "react";
 import { Calendar, Users, FlaskConical, Target, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { API_BASE_URL } from "@/lib/api";
 
-const trials = [
-  {
-    id: "ONCO-2024-A1",
-    name: "Advanced Melanoma Treatment",
-    phase: "Phase 2",
-    patients: 156,
-    target: 200,
-    sites: 12,
-    startDate: "Jan 15, 2024",
-    status: "enrolling",
-    progress: 78,
-  },
-  {
-    id: "CARDIO-2024-B3",
-    name: "Cardiac Arrhythmia Study",
-    phase: "Phase 3",
-    patients: 423,
-    target: 500,
-    sites: 28,
-    startDate: "Nov 3, 2023",
-    status: "active",
-    progress: 85,
-  },
-  {
-    id: "NEURO-2024-C2",
-    name: "Parkinson's Disease Trial",
-    phase: "Phase 2",
-    patients: 89,
-    target: 150,
-    sites: 8,
-    startDate: "Mar 1, 2024",
-    status: "enrolling",
-    progress: 59,
-  },
-];
+
 
 const statusConfig = {
   enrolling: { label: "Enrolling", className: "bg-primary/10 text-primary" },
@@ -45,17 +13,26 @@ const statusConfig = {
 };
 
 export function TrialOverview() {
+  const [trials, setTrials] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/dashboard/trials`)
+      .then(res => res.json())
+      .then(data => setTrials(data))
+      .catch(err => console.error(err));
+  }, []);
+
   return (
-    <div className="rounded-xl bg-card shadow-card overflow-hidden animate-slide-up" style={{ animationDelay: "500ms" }}>
-      <div className="p-6 border-b border-border">
-        <div className="flex items-center justify-between">
+    <div className="h-full rounded-xl bg-card shadow-card overflow-hidden animate-slide-up" style={{ animationDelay: "500ms" }}>
+      <div className="p-4 sm:p-6 border-b border-border">
+        <div className="flex items-center justify-between gap-2">
           <div>
-            <h3 className="text-lg font-semibold">Active Trials</h3>
-            <p className="text-sm text-muted-foreground">Clinical trial progress overview</p>
+            <h3 className="text-base sm:text-lg font-semibold">Active Trials</h3>
+            <p className="text-xs sm:text-sm text-muted-foreground">Clinical trial progress</p>
           </div>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm">
             All Trials
-            <ArrowRight className="h-4 w-4 ml-1" />
+            <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-1" />
           </Button>
         </div>
       </div>
@@ -63,20 +40,20 @@ export function TrialOverview() {
       <div className="divide-y divide-border">
         {trials.map((trial) => {
           const status = statusConfig[trial.status as keyof typeof statusConfig];
-          
+
           return (
-            <div key={trial.id} className="p-6 hover:bg-secondary/20 transition-colors">
-              <div className="flex items-start justify-between mb-4">
-                <div>
+            <div key={trial.id} className="p-4 sm:p-6 hover:bg-secondary/20 transition-colors">
+              <div className="flex items-start justify-between gap-3 mb-3 sm:mb-4">
+                <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-mono text-muted-foreground">{trial.id}</span>
-                    <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", status.className)}>
+                    <span className="text-[10px] sm:text-xs font-mono text-muted-foreground">{trial.id}</span>
+                    <span className={cn("px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium", status.className)}>
                       {status.label}
                     </span>
                   </div>
-                  <h4 className="font-semibold">{trial.name}</h4>
+                  <h4 className="font-semibold text-sm sm:text-base truncate">{trial.name}</h4>
                 </div>
-                <span className="px-3 py-1 rounded-lg bg-secondary text-sm font-medium">{trial.phase}</span>
+                <span className="flex-shrink-0 px-2 sm:px-3 py-0.5 sm:py-1 rounded-lg bg-secondary text-xs sm:text-sm font-medium">{trial.phase}</span>
               </div>
 
               {/* Progress Bar */}
@@ -94,26 +71,26 @@ export function TrialOverview() {
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
+              <div className="grid grid-cols-2 min-[400px]:grid-cols-3 gap-3 sm:gap-4 px-2">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-semibold">{trial.patients}/{trial.target}</p>
-                    <p className="text-xs text-muted-foreground">Patients</p>
+                    <p className="text-xs sm:text-sm font-semibold">{trial.patients}/{trial.target}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Subjects</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <FlaskConical className="h-4 w-4 text-muted-foreground" />
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <FlaskConical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-semibold">{trial.sites}</p>
-                    <p className="text-xs text-muted-foreground">Sites</p>
+                    <p className="text-xs sm:text-sm font-semibold">{trial.sites}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Sites</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-semibold">{trial.startDate}</p>
-                    <p className="text-xs text-muted-foreground">Started</p>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm font-semibold truncate">{trial.startDate}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Started</p>
                   </div>
                 </div>
               </div>

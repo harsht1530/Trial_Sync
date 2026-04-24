@@ -14,21 +14,22 @@ import {
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
 
-interface SidebarProps {
+export interface SidebarProps {
   activeTab?: string;
   onTabChange?: (tab: string) => void;
+  className?: string;
 }
 
 const navigation = [
   { id: "dashboard", name: "Dashboard", icon: LayoutDashboard, path: "/" },
-  { id: "patients", name: "Subject", icon: Users, path: "/patients" },
+  { id: "subject", name: "Subject", icon: Users, path: "/subject" },
   { id: "validation", name: "Data Validation", icon: ClipboardCheck, path: "/validation" },
   { id: "epro", name: "ePRO", icon: ClipboardList, path: "/epro" },
   { id: "communications", name: "Communications", icon: MessageSquare, path: "/communications" },
   { id: "symptoms", name: "Symptoms", icon: Activity, path: "/symptoms" },
   { id: "analytics", name: "Analytics", icon: BarChart3, path: "/analytics" },
-  { id: "monitoring", name: "Monitoring", icon: Activity, path: "/" },
-  { id: "reports", name: "Reports", icon: FileText, path: "/" },
+  // { id: "monitoring", name: "Monitoring", icon: Activity, path: "/" },
+  // { id: "reports", name: "Reports", icon: FileText, path: "/" },
 ];
 
 const bottomNav = [
@@ -36,7 +37,7 @@ const bottomNav = [
   { id: "compliance", name: "Compliance", icon: Shield, path: "/" },
 ];
 
-export function Sidebar({ activeTab: propActiveTab, onTabChange }: SidebarProps) {
+export function SidebarContent({ activeTab: propActiveTab, onTabChange, className }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [currentLogoIndex, setCurrentLogoIndex] = useState(0);
@@ -56,7 +57,7 @@ export function Sidebar({ activeTab: propActiveTab, onTabChange }: SidebarProps)
   // Determine active tab based on current path
   const getActiveTabFromPath = () => {
     if (location.pathname === "/") return "dashboard";
-    if (location.pathname === "/patients" || location.pathname.startsWith("/patient/")) return "patients";
+    if (location.pathname === "/subject" || location.pathname.startsWith("/subjects/")) return "subject";
     if (location.pathname === "/validation") return "validation";
     if (location.pathname === "/epro") return "epro";
     if (location.pathname === "/communications") return "communications";
@@ -74,7 +75,7 @@ export function Sidebar({ activeTab: propActiveTab, onTabChange }: SidebarProps)
   };
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar border-r border-sidebar-border">
+    <div className={cn("flex flex-col h-full bg-sidebar border-r border-sidebar-border w-64", className)}>
       {/* Global Gradient Defs for Icons */}
       <svg width="0" height="0" className="absolute">
         <defs>
@@ -138,7 +139,7 @@ export function Sidebar({ activeTab: propActiveTab, onTabChange }: SidebarProps)
       </nav>
 
       {/* Bottom Navigation */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border">
+      <div className="mt-auto p-4 border-t border-sidebar-border">
         {bottomNav.map((item) => {
           const isActive = activeTab === item.id;
           return (
@@ -161,6 +162,14 @@ export function Sidebar({ activeTab: propActiveTab, onTabChange }: SidebarProps)
           );
         })}
       </div>
+    </div>
+  );
+}
+
+export function Sidebar(props: SidebarProps) {
+  return (
+    <aside className="fixed left-0 top-0 z-40 h-screen hidden lg:flex">
+      <SidebarContent {...props} />
     </aside>
   );
 }

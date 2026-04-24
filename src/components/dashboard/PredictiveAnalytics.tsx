@@ -1,48 +1,14 @@
+import { useEffect, useState } from "react";
 import { Brain, TrendingUp, TrendingDown, AlertTriangle, Activity, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { API_BASE_URL } from "@/lib/api";
 
-const predictions = [
-  {
-    title: "Dropout Risk",
-    value: "12.3%",
-    trend: "down",
-    change: "-2.1%",
-    description: "Predicted patient dropout rate for next 30 days",
-    icon: TrendingDown,
-    color: "success",
-    patients: 18,
-  },
-  {
-    title: "Adverse Events",
-    value: "5.7%",
-    trend: "up",
-    change: "+0.8%",
-    description: "Probability of AE occurrence in active cohort",
-    icon: AlertTriangle,
-    color: "warning",
-    patients: 8,
-  },
-  {
-    title: "Efficacy Signal",
-    value: "73.2%",
-    trend: "up",
-    change: "+3.5%",
-    description: "Positive response prediction based on biomarkers",
-    icon: Target,
-    color: "primary",
-    patients: 108,
-  },
-  {
-    title: "Compliance Score",
-    value: "89.4%",
-    trend: "up",
-    change: "+1.2%",
-    description: "Expected protocol adherence for active patients",
-    icon: Activity,
-    color: "accent",
-    patients: 132,
-  },
-];
+const iconMap: Record<string, any> = {
+  "Dropout Risk": TrendingDown,
+  "Adverse Events": AlertTriangle,
+  "Efficacy Signal": Target,
+  "Compliance Score": Activity,
+};
 
 const colorConfig = {
   success: "from-success/20 to-success/5 border-success/30",
@@ -61,6 +27,17 @@ const iconColors = {
 };
 
 export function PredictiveAnalytics() {
+  const [predictions, setPredictions] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/dashboard/predictions`)
+      .then(res => res.json())
+      .then(data => {
+        const mappedData = data.map((item: any) => ({ ...item, icon: iconMap[item.title] || Activity }));
+        setPredictions(mappedData);
+      })
+      .catch(err => console.error(err));
+  }, []);
   return (
     <div className="rounded-xl bg-card shadow-card overflow-hidden animate-slide-up" style={{ animationDelay: "600ms" }}>
       <div className="p-6 border-b border-border">
@@ -75,7 +52,7 @@ export function PredictiveAnalytics() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 p-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 sm:p-6">
         {predictions.map((prediction) => (
           <div
             key={prediction.title}
@@ -86,7 +63,7 @@ export function PredictiveAnalytics() {
           >
             {/* Background decoration */}
             <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-gradient-to-br from-background/20 to-transparent blur-xl" />
-            
+
             <div className="relative">
               <div className="flex items-start justify-between mb-3">
                 <div className={cn("p-2 rounded-lg", iconColors[prediction.color as keyof typeof iconColors])}>
@@ -94,9 +71,9 @@ export function PredictiveAnalytics() {
                 </div>
                 <div className={cn(
                   "flex items-center gap-1 text-xs font-medium",
-                  prediction.trend === "up" 
-                    ? prediction.color === "warning" || prediction.color === "destructive" 
-                      ? "text-destructive" 
+                  prediction.trend === "up"
+                    ? prediction.color === "warning" || prediction.color === "destructive"
+                      ? "text-destructive"
                       : "text-success"
                     : "text-success"
                 )}>
@@ -112,11 +89,11 @@ export function PredictiveAnalytics() {
               <p className="text-sm font-medium text-muted-foreground mb-1">{prediction.title}</p>
               <p className="text-3xl font-bold mb-2">{prediction.value}</p>
               <p className="text-xs text-muted-foreground line-clamp-2">{prediction.description}</p>
-              
+
               <div className="mt-3 pt-3 border-t border-border/50">
                 <p className="text-xs">
                   <span className="font-semibold">{prediction.patients}</span>
-                  <span className="text-muted-foreground"> patients affected</span>
+                  <span className="text-muted-foreground"> subjects affected</span>
                 </p>
               </div>
             </div>

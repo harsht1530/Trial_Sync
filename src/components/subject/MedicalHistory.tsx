@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { API_BASE_URL } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
@@ -6,35 +7,31 @@ import {
   Stethoscope, 
   AlertTriangle, 
   Syringe,
-  FileText
+  FileText,
+  Loader2
 } from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface MedicalHistoryProps {
   patientId: string;
 }
 
 export const MedicalHistory = ({ patientId }: MedicalHistoryProps) => {
-  // Mock medical history data
-  const medicalHistory = {
-    conditions: [
-      { name: "Type 2 Diabetes", diagnosedDate: "2018-03-15", status: "Ongoing" },
-      { name: "Hypertension", diagnosedDate: "2019-08-22", status: "Controlled" },
-      { name: "Asthma", diagnosedDate: "2005-01-10", status: "Mild" }
-    ],
-    medications: [
-      { name: "Metformin", dosage: "500mg", frequency: "Twice daily" },
-      { name: "Lisinopril", dosage: "10mg", frequency: "Once daily" },
-      { name: "Albuterol", dosage: "90mcg", frequency: "As needed" }
-    ],
-    allergies: [
-      { allergen: "Penicillin", severity: "Severe", reaction: "Anaphylaxis" },
-      { allergen: "Sulfa drugs", severity: "Moderate", reaction: "Rash" }
-    ],
-    surgeries: [
-      { procedure: "Appendectomy", date: "2010-05-20", notes: "Laparoscopic" },
-      { procedure: "Knee Arthroscopy", date: "2015-11-08", notes: "Right knee" }
-    ]
-  };
+  const [medicalHistory, setMedicalHistory] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/subjects/${patientId}/medical-history`)
+      .then(res => res.json())
+      .then(data => {
+        setMedicalHistory(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, [patientId]);
 
   const getSeverityColor = (severity: string) => {
     switch (severity.toLowerCase()) {
@@ -46,6 +43,16 @@ export const MedicalHistory = ({ patientId }: MedicalHistoryProps) => {
         return "bg-muted text-muted-foreground border-muted";
     }
   };
+
+  if (loading || !medicalHistory) {
+    return (
+      <Card className="h-fit">
+        <CardContent className="flex flex-col items-center justify-center h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="h-fit">
@@ -65,7 +72,7 @@ export const MedicalHistory = ({ patientId }: MedicalHistoryProps) => {
                 Conditions
               </h4>
               <div className="space-y-2">
-                {medicalHistory.conditions.map((condition, index) => (
+                {(medicalHistory.conditions || []).map((condition, index) => (
                   <div 
                     key={index}
                     className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
@@ -73,7 +80,7 @@ export const MedicalHistory = ({ patientId }: MedicalHistoryProps) => {
                     <div>
                       <p className="font-medium text-sm">{condition.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        Diagnosed: {new Date(condition.diagnosedDate).toLocaleDateString()}
+                        Diagnosed: {condition.diagnosedDate ? new Date(condition.diagnosedDate).toLocaleDateString() : 'N/A'}
                       </p>
                     </div>
                     <Badge variant="outline" className="text-xs">
@@ -91,7 +98,7 @@ export const MedicalHistory = ({ patientId }: MedicalHistoryProps) => {
                 Current Medications
               </h4>
               <div className="space-y-2">
-                {medicalHistory.medications.map((med, index) => (
+                {(medicalHistory.medications || []).map((med, index) => (
                   <div 
                     key={index}
                     className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
@@ -114,7 +121,7 @@ export const MedicalHistory = ({ patientId }: MedicalHistoryProps) => {
                 Allergies
               </h4>
               <div className="space-y-2">
-                {medicalHistory.allergies.map((allergy, index) => (
+                {(medicalHistory.allergies || []).map((allergy, index) => (
                   <div 
                     key={index}
                     className="flex items-center justify-between p-3 bg-destructive/5 rounded-lg border border-destructive/10"
@@ -125,7 +132,7 @@ export const MedicalHistory = ({ patientId }: MedicalHistoryProps) => {
                         Reaction: {allergy.reaction}
                       </p>
                     </div>
-                    <Badge className={getSeverityColor(allergy.severity)}>
+                    <Badge className={getSeverityColor(allergy.severity || "Unknown")}>
                       {allergy.severity}
                     </Badge>
                   </div>
@@ -140,7 +147,7 @@ export const MedicalHistory = ({ patientId }: MedicalHistoryProps) => {
                 Past Surgeries
               </h4>
               <div className="space-y-2">
-                {medicalHistory.surgeries.map((surgery, index) => (
+                {(medicalHistory.surgeries || []).map((surgery, index) => (
                   <div 
                     key={index}
                     className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
@@ -148,7 +155,7 @@ export const MedicalHistory = ({ patientId }: MedicalHistoryProps) => {
                     <div>
                       <p className="font-medium text-sm">{surgery.procedure}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(surgery.date).toLocaleDateString()} • {surgery.notes}
+                        {surgery.date ? new Date(surgery.date).toLocaleDateString() : 'N/A'} • {surgery.notes}
                       </p>
                     </div>
                   </div>

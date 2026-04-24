@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet";
-import { 
-  CheckCircle2, 
-  AlertTriangle, 
-  Clock, 
+import {
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
   XCircle,
   FileText,
   User,
@@ -15,10 +15,13 @@ import {
   History,
   Edit3,
   Check,
-  X
+  X,
+  Loader2
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { API_BASE_URL } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -51,7 +54,7 @@ interface ValidationItem {
   flaggedValue?: string;
   issue: string;
   severity: "critical" | "warning" | "info";
-  status: "pending" | "in_review" | "corrected" | "approved" | "rejected";
+  status: "pending" | "in_review" | "corrected" | "approved" | "rejected" | "resolved" | "deferred" | "escalated";
   flaggedAt: string;
   assignedTo?: string;
   trial: string;
@@ -68,123 +71,7 @@ interface AuditEntry {
   notes?: string;
 }
 
-const mockValidationQueue: ValidationItem[] = [
-  {
-    id: "VAL-001",
-    patientId: "PT-001",
-    patientName: "John Martinez",
-    dataType: "Vital Signs",
-    field: "Blood Pressure",
-    originalValue: "180/120 mmHg",
-    issue: "Value exceeds protocol threshold (>160/100)",
-    severity: "critical",
-    status: "pending",
-    flaggedAt: "2024-01-15 09:30",
-    trial: "ONCO-2024-A1",
-  },
-  {
-    id: "VAL-002",
-    patientId: "PT-002",
-    patientName: "Emily Watson",
-    dataType: "Lab Results",
-    field: "Creatinine",
-    originalValue: "2.8 mg/dL",
-    issue: "Abnormal value detected - potential data entry error",
-    severity: "warning",
-    status: "in_review",
-    flaggedAt: "2024-01-15 08:15",
-    assignedTo: "Dr. Sarah Chen",
-    trial: "CARDIO-2024-B3",
-  },
-  {
-    id: "VAL-003",
-    patientId: "PT-004",
-    patientName: "Maria Garcia",
-    dataType: "ePRO",
-    field: "Pain Score",
-    originalValue: "12",
-    issue: "Value out of range (expected 0-10)",
-    severity: "critical",
-    status: "pending",
-    flaggedAt: "2024-01-15 07:45",
-    trial: "ONCO-2024-A1",
-  },
-  {
-    id: "VAL-004",
-    patientId: "PT-003",
-    patientName: "Robert Chen",
-    dataType: "Medication",
-    field: "Dosage",
-    originalValue: "500mg",
-    flaggedValue: "50mg",
-    issue: "Dosage deviation from protocol (expected 50mg)",
-    severity: "warning",
-    status: "in_review",
-    flaggedAt: "2024-01-14 16:20",
-    assignedTo: "Dr. Michael Park",
-    trial: "NEURO-2024-C2",
-  },
-  {
-    id: "VAL-005",
-    patientId: "PT-005",
-    patientName: "David Kim",
-    dataType: "Visit Data",
-    field: "Visit Date",
-    originalValue: "2024-01-20",
-    issue: "Visit date outside protocol window",
-    severity: "info",
-    status: "pending",
-    flaggedAt: "2024-01-14 14:00",
-    trial: "CARDIO-2024-B3",
-  },
-];
 
-const mockAuditTrail: AuditEntry[] = [
-  {
-    id: "AUD-001",
-    validationId: "VAL-006",
-    action: "Correction Applied",
-    performedBy: "Dr. Sarah Chen",
-    timestamp: "2024-01-14 11:30",
-    oldValue: "15",
-    newValue: "5",
-    notes: "Patient confirmed pain level was 5, data entry error corrected",
-  },
-  {
-    id: "AUD-002",
-    validationId: "VAL-007",
-    action: "Approved",
-    performedBy: "Dr. Michael Park",
-    timestamp: "2024-01-14 10:15",
-    notes: "Value confirmed as accurate per source documents",
-  },
-  {
-    id: "AUD-003",
-    validationId: "VAL-008",
-    action: "Rejected",
-    performedBy: "Dr. Sarah Chen",
-    timestamp: "2024-01-13 16:45",
-    notes: "Unable to verify - requesting additional documentation",
-  },
-  {
-    id: "AUD-004",
-    validationId: "VAL-009",
-    action: "Assigned for Review",
-    performedBy: "System",
-    timestamp: "2024-01-13 14:20",
-    notes: "Auto-assigned to principal investigator",
-  },
-  {
-    id: "AUD-005",
-    validationId: "VAL-010",
-    action: "Correction Applied",
-    performedBy: "Dr. Lisa Wong",
-    timestamp: "2024-01-13 09:00",
-    oldValue: "2024-02-30",
-    newValue: "2024-02-28",
-    notes: "Invalid date corrected",
-  },
-];
 
 const severityConfig = {
   critical: { label: "Critical", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
@@ -195,12 +82,15 @@ const severityConfig = {
 const statusConfig = {
   pending: { label: "Pending", className: "bg-secondary text-secondary-foreground" },
   in_review: { label: "In Review", className: "bg-warning/10 text-warning" },
-  corrected: { label: "Corrected", className: "bg-primary/10 text-primary" },
+  resolved: { label: "Resolved", className: "bg-primary/10 text-primary" },
   approved: { label: "Approved", className: "bg-success/10 text-success" },
   rejected: { label: "Rejected", className: "bg-destructive/10 text-destructive" },
+  deferred: { label: "Deferred", className: "bg-muted text-muted-foreground" },
+  escalated: { label: "Escalated", className: "bg-destructive/20 text-destructive" }
 };
 
 export default function DataValidation() {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSeverity, setSelectedSeverity] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -209,44 +99,97 @@ export default function DataValidation() {
   const [correctionValue, setCorrectionValue] = useState("");
   const [correctionNotes, setCorrectionNotes] = useState("");
 
-  const filteredQueue = mockValidationQueue.filter((item) => {
+  const [queue, setQueue] = useState<ValidationItem[]>([]);
+  const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
+  const [summary, setSummary] = useState({ pending: 0, inReview: 0, critical: 0, resolutionRate: '0%' });
+  const [loading, setLoading] = useState(true);
+
+  const fetchAuditTrail = () => {
+    fetch(`${API_BASE_URL}/api/validation/audit-trail`)
+      .then(res => res.json())
+      .then(data => setAuditTrail(data || []))
+      .catch(err => console.error('Failed to fetch audit logs', err));
+  };
+
+  const fetchFlags = () => {
+    setLoading(true);
+    let url = `${API_BASE_URL}/api/validation/flags`;
+    const params = new URLSearchParams();
+    if (selectedSeverity !== 'all') params.append('severity', selectedSeverity);
+    if (selectedStatus !== 'all') params.append('status', selectedStatus);
+
+    if (params.toString()) {
+      url += '?' + params.toString();
+    }
+
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        setQueue(data.flags || []);
+        if (data.summary) {
+          setSummary(data.summary);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch validation flags', err);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchFlags();
+    fetchAuditTrail();
+  }, [selectedSeverity, selectedStatus]);
+
+  const filteredQueue = queue.filter((item) => {
     const matchesSearch = searchQuery === "" ||
       item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.patientId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.field.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesSeverity = selectedSeverity === "all" || item.severity === selectedSeverity;
-    const matchesStatus = selectedStatus === "all" || item.status === selectedStatus;
 
-    return matchesSearch && matchesSeverity && matchesStatus;
+    return matchesSearch;
   });
 
-  const pendingCount = mockValidationQueue.filter(i => i.status === "pending").length;
-  const inReviewCount = mockValidationQueue.filter(i => i.status === "in_review").length;
-  const criticalCount = mockValidationQueue.filter(i => i.severity === "critical").length;
-
-  const handleApprove = (item: ValidationItem) => {
-    console.log("Approved:", item.id);
-    setSelectedItem(null);
-  };
-
-  const handleReject = (item: ValidationItem) => {
-    console.log("Rejected:", item.id);
-    setSelectedItem(null);
+  const handleAction = (item: ValidationItem, actionConfig: string) => {
+    fetch(`${API_BASE_URL}/api/validation/flags/${item.id}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: actionConfig })
+    })
+      .then(res => res.json())
+      .then(() => {
+        fetchFlags();
+        fetchAuditTrail();
+        setSelectedItem(null);
+        toast({ title: "Status Updated", description: `${item.id} action processed successfully` });
+      })
+      .catch(err => console.error("Error updating", err));
   };
 
   const handleCorrection = () => {
-    if (selectedItem && correctionValue.trim()) {
-      console.log("Correction applied:", {
-        id: selectedItem.id,
-        newValue: correctionValue,
-        notes: correctionNotes,
-      });
-      setCorrectionDialogOpen(false);
-      setCorrectionValue("");
-      setCorrectionNotes("");
-      setSelectedItem(null);
+    if (selectedItem && (correctionValue.trim() || correctionNotes.trim())) {
+      fetch(`${API_BASE_URL}/api/validation/flags/${selectedItem.id}/resolve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ correctionValue, correctionNotes })
+      })
+        .then(res => res.json())
+        .then(data => {
+          setCorrectionDialogOpen(false);
+          setCorrectionValue("");
+          setCorrectionNotes("");
+          setSelectedItem(null);
+          fetchFlags();
+          fetchAuditTrail();
+          toast({ title: "Correction Applied", description: `${selectedItem.id} resolved successfully` });
+        })
+        .catch(err => console.error("Error applying correction", err));
     }
+  };
+
+  const handleExport = () => {
+    window.open(`${API_BASE_URL}/api/validation/audit-trail/export`, '_blank');
   };
 
   return (
@@ -258,11 +201,11 @@ export default function DataValidation() {
 
       <div className="min-h-screen bg-background">
         <Sidebar />
-        
-        <div className="ml-64">
+
+        <div className="lg:ml-64">
           <Header />
-          
-          <main className="p-8">
+
+          <main className="p-4 sm:p-8">
             {/* Page Header */}
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-foreground">Data Validation</h1>
@@ -277,7 +220,7 @@ export default function DataValidation() {
                     <Clock className="h-5 w-5 text-warning" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{pendingCount}</p>
+                    <p className="text-2xl font-bold">{summary.pending}</p>
                     <p className="text-sm text-muted-foreground">Pending Review</p>
                   </div>
                 </div>
@@ -288,7 +231,7 @@ export default function DataValidation() {
                     <Edit3 className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{inReviewCount}</p>
+                    <p className="text-2xl font-bold">{summary.inReview}</p>
                     <p className="text-sm text-muted-foreground">In Review</p>
                   </div>
                 </div>
@@ -299,7 +242,7 @@ export default function DataValidation() {
                     <XCircle className="h-5 w-5 text-destructive" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{criticalCount}</p>
+                    <p className="text-2xl font-bold">{summary.critical}</p>
                     <p className="text-sm text-muted-foreground">Critical Issues</p>
                   </div>
                 </div>
@@ -310,7 +253,7 @@ export default function DataValidation() {
                     <CheckCircle2 className="h-5 w-5 text-success" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">94%</p>
+                    <p className="text-2xl font-bold">{summary.resolutionRate}</p>
                     <p className="text-sm text-muted-foreground">Resolution Rate</p>
                   </div>
                 </div>
@@ -338,7 +281,7 @@ export default function DataValidation() {
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        placeholder="Search by patient, ID, or field..."
+                        placeholder="Search by subject, ID, or field..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-10"
@@ -363,9 +306,9 @@ export default function DataValidation() {
                         <SelectItem value="all">All Status</SelectItem>
                         <SelectItem value="pending">Pending</SelectItem>
                         <SelectItem value="in_review">In Review</SelectItem>
-                        <SelectItem value="corrected">Corrected</SelectItem>
-                        <SelectItem value="approved">Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
+                        <SelectItem value="resolved">Resolved</SelectItem>
+                        <SelectItem value="deferred">Deferred</SelectItem>
+                        <SelectItem value="escalated">Escalated</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -374,9 +317,14 @@ export default function DataValidation() {
                 {/* Queue List */}
                 <div className="bg-card rounded-xl shadow-card overflow-hidden">
                   <div className="divide-y divide-border">
-                    {filteredQueue.map((item) => {
+                    {loading ? (
+                      <div className="p-12 text-center text-muted-foreground">
+                        <Loader2 className="h-8 w-8 mx-auto animate-spin mb-4" />
+                        Fetching validation records...
+                      </div>
+                    ) : filteredQueue.map((item) => {
                       const severity = severityConfig[item.severity];
-                      const status = statusConfig[item.status];
+                      const status = statusConfig[item.status] || statusConfig.pending;
                       const SeverityIcon = severity.icon;
 
                       return (
@@ -384,7 +332,8 @@ export default function DataValidation() {
                           key={item.id}
                           className={cn(
                             "p-5 hover:bg-secondary/20 transition-colors cursor-pointer",
-                            selectedItem?.id === item.id && "bg-secondary/30"
+                            selectedItem?.id === item.id && "bg-secondary/30",
+                            item.severity === "critical" && "border-l-4 border-l-destructive/60"
                           )}
                           onClick={() => setSelectedItem(item)}
                         >
@@ -407,7 +356,7 @@ export default function DataValidation() {
                                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                                   <span className="flex items-center gap-1">
                                     <User className="h-3 w-3" />
-                                    {item.patientName} ({item.patientId})
+                                    {item.patientId}
                                   </span>
                                   <span className="flex items-center gap-1">
                                     <FileText className="h-3 w-3" />
@@ -457,9 +406,7 @@ export default function DataValidation() {
 
                     <div className="grid grid-cols-2 gap-6 mb-6">
                       <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Patient</p>
-                        <p className="font-medium">{selectedItem.patientName}</p>
-                        <p className="text-sm text-muted-foreground">{selectedItem.patientId}</p>
+                        <p className="font-medium">{selectedItem.patientId}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Trial</p>
@@ -489,29 +436,32 @@ export default function DataValidation() {
                     </div>
 
                     <div className="flex gap-3">
-                      <Button 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={() => setCorrectionDialogOpen(true)}
-                      >
-                        <Edit3 className="h-4 w-4 mr-2" />
-                        Apply Correction
-                      </Button>
-                      <Button 
-                        variant="outline"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleReject(selectedItem)}
-                      >
-                        <X className="h-4 w-4 mr-2" />
-                        Reject
-                      </Button>
-                      <Button 
-                        className="bg-success hover:bg-success/90"
-                        onClick={() => handleApprove(selectedItem)}
-                      >
-                        <Check className="h-4 w-4 mr-2" />
-                        Approve
-                      </Button>
+                      {selectedItem.status === 'pending' && (
+                        <Button className="flex-1" onClick={() => handleAction(selectedItem, 'start_review')}>
+                          Start Review
+                        </Button>
+                      )}
+
+                      {selectedItem.status === 'in_review' && (
+                        <>
+                          <Button variant="outline" className="flex-1" onClick={() => setCorrectionDialogOpen(true)}>
+                            <Check className="h-4 w-4 mr-2" />
+                            Resolve
+                          </Button>
+                          <Button variant="outline" onClick={() => handleAction(selectedItem, 'defer')}>
+                            Defer
+                          </Button>
+                          <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => handleAction(selectedItem, 'escalate')}>
+                            Escalate to PI
+                          </Button>
+                        </>
+                      )}
+
+                      {(selectedItem.status === 'resolved' || selectedItem.status === 'deferred' || selectedItem.status === 'escalated') && (
+                        <div className="text-sm text-muted-foreground italic w-full text-center p-2 mb-2 bg-secondary/30 rounded-md">
+                          No further actions available for state ({selectedItem.status}).
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -520,12 +470,23 @@ export default function DataValidation() {
               {/* Audit Trail Tab */}
               <TabsContent value="audit" className="space-y-4">
                 <div className="bg-card rounded-xl shadow-card overflow-hidden">
-                  <div className="p-4 border-b border-border">
-                    <h3 className="font-semibold">Recent Activity</h3>
-                    <p className="text-sm text-muted-foreground">Complete audit trail of all validation actions</p>
+                  <div className="p-4 border-b border-border flex justify-between items-center">
+                    <div>
+                      <h3 className="font-semibold">Recent Activity</h3>
+                      <p className="text-sm text-muted-foreground">Complete audit trail of all validation actions</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleExport}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Export CSV
+                    </Button>
                   </div>
                   <div className="divide-y divide-border">
-                    {mockAuditTrail.map((entry) => (
+                    {auditTrail.length === 0 ? (
+                      <div className="p-12 text-center text-muted-foreground">
+                        <History className="h-8 w-8 mx-auto mb-4 opacity-50" />
+                        No audit logs available
+                      </div>
+                    ) : auditTrail.map((entry) => (
                       <div key={entry.id} className="p-5">
                         <div className="flex items-start gap-4">
                           <div className={cn(

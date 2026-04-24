@@ -50,9 +50,9 @@ export const PatientProfile = ({ patient }: PatientProfileProps) => {
     }
   };
 
-  const initials = patient.name
+  const initials = (patient.name || "Subject")
     .split(" ")
-    .map((n) => n[0])
+    .map((n) => n[0] || "")
     .join("")
     .toUpperCase();
 
@@ -105,15 +105,15 @@ export const PatientProfile = ({ patient }: PatientProfileProps) => {
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-sm">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <span>{patient.email}</span>
+                <span>{patient.email || "No email provided"}</span>
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>{patient.phone}</span>
+                <span>{patient.phone || "No phone provided"}</span>
               </div>
               <div className="flex items-start gap-3 text-sm">
                 <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                <span>{patient.address}</span>
+                <span>{patient.address || "No address provided"}</span>
               </div>
             </div>
           </div>
@@ -148,14 +148,14 @@ export const PatientProfile = ({ patient }: PatientProfileProps) => {
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-sm">
                 <User className="h-4 w-4 text-muted-foreground" />
-                <span>{patient.emergencyContact.name}</span>
+                <span>{patient.emergencyContact?.name || "Not specified"}</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <span className="ml-7">{patient.emergencyContact.relationship}</span>
+                <span className="ml-7">{patient.emergencyContact?.relationship || "N/A"}</span>
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>{patient.emergencyContact.phone}</span>
+                <span>{patient.emergencyContact?.phone || "No phone"}</span>
               </div>
             </div>
           </div>

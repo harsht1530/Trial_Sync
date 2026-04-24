@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { API_BASE_URL } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -45,52 +46,7 @@ interface PatientChatbotProps {
   patientName: string;
 }
 
-const initialMessages: Message[] = [
-  {
-    id: "sys-1",
-    role: "system",
-    content: "Conversation started with AI Health Assistant",
-    timestamp: new Date(Date.now() - 1000 * 60 * 30),
-    type: "text"
-  },
-  {
-    id: "bot-1",
-    role: "assistant",
-    content: "Hello Sarah! I'm your AI Health Assistant for the clinical trial. How are you feeling today? I'm here to help with medication reminders, symptom tracking, and answering any questions about your treatment.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 29),
-    type: "text"
-  },
-  {
-    id: "user-1",
-    role: "user",
-    content: "Hi! I've been having some mild headaches the past couple of days.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 28),
-    type: "text"
-  },
-  {
-    id: "bot-2",
-    role: "assistant",
-    content: "Thank you for letting me know about the headaches. I'd like to ask a few questions to better understand your symptoms:\n\n1. On a scale of 1-10, how would you rate the pain?\n2. When do the headaches typically occur?\n3. Have you noticed any other symptoms alongside the headaches?",
-    timestamp: new Date(Date.now() - 1000 * 60 * 27),
-    type: "symptom-check",
-    metadata: { severity: "low", followUp: true }
-  },
-  {
-    id: "user-2",
-    role: "user",
-    content: "The pain is about a 4. They usually happen in the afternoon, and sometimes I feel a bit tired too.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 25),
-    type: "text"
-  },
-  {
-    id: "bot-3",
-    role: "assistant",
-    content: "I've logged your symptoms: mild headache (4/10) and fatigue, occurring in afternoons. This information has been recorded in your trial records.\n\n✅ Symptoms logged\n📋 Added to your health record\n👨‍⚕️ Care team notified\n\nFor mild headaches, ensure you're staying hydrated. If symptoms worsen or persist beyond 3 days, please contact your care team. Would you like me to schedule a follow-up call?",
-    timestamp: new Date(Date.now() - 1000 * 60 * 24),
-    type: "symptom-check",
-    metadata: { severity: "low", action: "logged", followUp: true }
-  }
-];
+// History will be fetched from the backend
 
 const quickResponses = [
   { label: "Symptom Check", icon: Activity, message: "I'd like to report some symptoms" },
@@ -101,7 +57,7 @@ const quickResponses = [
 
 export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) => {
   const { toast } = useToast();
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isMicActive, setIsMicActive] = useState(false);
@@ -111,89 +67,92 @@ export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) 
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // Fetch History
+    fetch(`${API_BASE_URL}/api/communications/chat/history?patientId=${patientId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.length === 0) {
+          // Add a welcome message if no history exists
+          setMessages([{
+            id: "sys-start",
+            role: "assistant",
+            content: `Hello ${(patientName || "Subject").split(" ")[0]}! I'm your AI Health Assistant for the clinical trial. How are you feeling today?`,
+            timestamp: new Date(),
+            type: "text"
+          }]);
+        } else {
+          setMessages((data || []).map((m: any) => ({
+            ...m,
+            id: m._id,
+            timestamp: new Date(m.timestamp)
+          })));
+        }
+      })
+      .catch(console.error);
+  }, [patientId]);
+
+  useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
 
-  const generateBotResponse = (userMessage: string): Message => {
-    const lowerMessage = userMessage.toLowerCase();
-
-    if (lowerMessage.includes("medication") || lowerMessage.includes("pill") || lowerMessage.includes("dose")) {
-      return {
-        id: `bot-${Date.now()}`,
-        role: "assistant",
-        content: "Your current medication schedule:\n\n💊 **Trial Medication (ABC-123)**\n• Morning: 1 tablet at 8:00 AM\n• Evening: 1 tablet at 8:00 PM\n\n⏰ Next dose: Today at 8:00 PM\n\nRemember to take medication with food. Would you like me to set up a reminder?",
-        timestamp: new Date(),
-        type: "medication"
-      };
-    }
-
-    if (lowerMessage.includes("symptom") || lowerMessage.includes("feeling") || lowerMessage.includes("pain")) {
-      return {
-        id: `bot-${Date.now()}`,
-        role: "assistant",
-        content: "I'm here to help track your symptoms. Please describe what you're experiencing, and rate any discomfort on a scale of 1-10.\n\nCommon areas to report:\n• Pain or discomfort\n• Energy levels\n• Sleep quality\n• Appetite changes\n• Mood changes\n\nYour responses will be securely logged and shared with your care team.",
-        timestamp: new Date(),
-        type: "symptom-check",
-        metadata: { followUp: true }
-      };
-    }
-
-    if (lowerMessage.includes("visit") || lowerMessage.includes("appointment") || lowerMessage.includes("schedule")) {
-      return {
-        id: `bot-${Date.now()}`,
-        role: "assistant",
-        content: "I can help you with scheduling. Here are your options:\n\n📅 **Next Scheduled Visit**\nJanuary 25, 2024 at 10:00 AM\nNew York Clinical Center\n\n**Available Actions:**\n• Confirm your attendance\n• Request to reschedule\n• Ask about visit preparation\n\nWould you like me to send you a reminder the day before?",
-        timestamp: new Date(),
-        type: "appointment"
-      };
-    }
-
-    if (lowerMessage.includes("emergency") || lowerMessage.includes("serious") || lowerMessage.includes("urgent")) {
-      return {
-        id: `bot-${Date.now()}`,
-        role: "assistant",
-        content: "🚨 **I understand this may be urgent.**\n\nIf you're experiencing a medical emergency, please:\n1. Call 911 immediately\n2. Contact your study coordinator: (555) 123-4567\n\nWould you like me to:\n• Connect you with the on-call nurse?\n• Alert your care team immediately?\n• Log this as an adverse event?\n\nPlease describe what you're experiencing so I can help appropriately.",
-        timestamp: new Date(),
-        type: "alert",
-        metadata: { severity: "high", followUp: true }
-      };
-    }
-
-    return {
-      id: `bot-${Date.now()}`,
-      role: "assistant",
-      content: `Thank you for your message. I'm here to help with:\n\n• 📊 Symptom tracking and reporting\n• 💊 Medication reminders and questions\n• 📅 Visit scheduling and reminders\n• ❓ General trial questions\n\nHow can I assist you today, ${patientName.split(" ")[0]}?`,
-      timestamp: new Date(),
-      type: "text"
-    };
-  };
+  // Note: generateBotResponse is replaced by backend AI logic
 
   const sendMessage = async (content: string) => {
     if (!content.trim()) return;
 
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
+    const tempUserMessage: Message = {
+      id: `temp-${Date.now()}`,
       role: "user",
       content: content.trim(),
       timestamp: new Date(),
       type: "text"
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages(prev => [...prev, tempUserMessage]);
     setInputValue("");
     setIsTyping(true);
 
-    // Simulate typing delay
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/communications/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          patientId,
+          message: content.trim()
+        })
+      });
 
-    const botResponse = generateBotResponse(content);
-    setMessages(prev => [...prev, botResponse]);
-    setIsTyping(false);
+      const data = await response.json();
+      
+      const botMessage: Message = {
+        id: data._id,
+        role: "assistant",
+        content: data.content,
+        timestamp: new Date(data.timestamp),
+        type: data.metadata?.clinicalExtraction?.isAdverseEvent ? "alert" : 
+              data.metadata?.clinicalExtraction?.symptom ? "symptom-check" : "text",
+        metadata: data.metadata?.clinicalExtraction ? {
+          severity: data.metadata.clinicalExtraction.severity >= 7 ? "high" : 
+                    data.metadata.clinicalExtraction.severity >= 4 ? "medium" : "low"
+        } : undefined
+      };
+
+      setMessages(prev => [...prev, botMessage]);
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Assistant Offline",
+        description: "Could not connect to the AI service.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsTyping(false);
+    }
 
     if (isSoundEnabled) {
-      // Would play notification sound here
+      // Notification sound logic
     }
   };
 

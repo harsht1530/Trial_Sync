@@ -1,22 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { API_BASE_URL } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { 
-  Bell, 
-  Phone, 
-  MessageSquare, 
-  Mail, 
-  Clock, 
-  CheckCircle2, 
+import {
+  Bell,
+  Phone,
+  MessageSquare,
+  Mail,
+  Clock,
+  CheckCircle2,
   AlertCircle,
   Plus,
   Play,
   Pause,
   PhoneCall,
   Calendar,
-  Pill
+  Pill,
+  Loader2
 } from "lucide-react";
 import {
   Dialog,
@@ -41,154 +43,101 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 interface Reminder {
-  id: string;
-  type: "medication" | "appointment" | "survey" | "follow-up";
-  title: string;
+  _id: string;
+  name: string;
   message: string;
   scheduledTime: string;
   frequency: string;
-  channel: "call" | "sms" | "email" | "all";
-  status: "active" | "paused" | "completed";
-  lastSent?: string;
-  nextDue?: string;
+  channel: "CALL" | "SMS" | "All channels";
+  status: "Active" | "Paused";
+  nextTrigger?: string;
 }
 
 interface CallLog {
-  id: string;
-  type: "outbound" | "inbound";
-  status: "completed" | "no-answer" | "scheduled" | "in-progress";
+  _id: string;
+  direction: "Outbound" | "Inbound";
+  outcome: "Completed" | "No Answer" | "Scheduled" | "In-progress";
   duration?: string;
   timestamp: string;
   notes?: string;
-  reminderType?: string;
+  reminderName?: string;
 }
 
 interface PatientRemindersProps {
   patientId: string;
 }
 
-const mockReminders: Reminder[] = [
-  {
-    id: "REM-001",
-    type: "medication",
-    title: "Medication Reminder",
-    message: "Time to take your morning medication. Please confirm once completed.",
-    scheduledTime: "08:00 AM",
-    frequency: "Daily",
-    channel: "call",
-    status: "active",
-    lastSent: "2024-01-18 08:00 AM",
-    nextDue: "2024-01-19 08:00 AM"
-  },
-  {
-    id: "REM-002",
-    type: "survey",
-    title: "Weekly Symptom Survey",
-    message: "Please complete your weekly symptom assessment survey.",
-    scheduledTime: "10:00 AM",
-    frequency: "Weekly",
-    channel: "sms",
-    status: "active",
-    lastSent: "2024-01-15 10:00 AM",
-    nextDue: "2024-01-22 10:00 AM"
-  },
-  {
-    id: "REM-003",
-    type: "appointment",
-    title: "Upcoming Visit Reminder",
-    message: "Reminder: You have a scheduled visit at the clinic tomorrow.",
-    scheduledTime: "5:00 PM",
-    frequency: "One-time",
-    channel: "all",
-    status: "active",
-    nextDue: "2024-01-20 5:00 PM"
-  },
-  {
-    id: "REM-004",
-    type: "follow-up",
-    title: "Post-Visit Follow-up",
-    message: "How are you feeling after your last visit? Any concerns to report?",
-    scheduledTime: "2:00 PM",
-    frequency: "After visits",
-    channel: "call",
-    status: "paused",
-    lastSent: "2024-01-10 2:00 PM"
-  }
-];
 
-const mockCallLogs: CallLog[] = [
-  {
-    id: "CALL-001",
-    type: "outbound",
-    status: "completed",
-    duration: "2:34",
-    timestamp: "2024-01-18 08:02 AM",
-    notes: "Patient confirmed medication taken. No adverse effects reported.",
-    reminderType: "Medication Reminder"
-  },
-  {
-    id: "CALL-002",
-    type: "outbound",
-    status: "no-answer",
-    timestamp: "2024-01-17 08:00 AM",
-    reminderType: "Medication Reminder"
-  },
-  {
-    id: "CALL-003",
-    type: "inbound",
-    status: "completed",
-    duration: "5:12",
-    timestamp: "2024-01-16 11:30 AM",
-    notes: "Patient called to report mild headache. Logged as adverse event."
-  },
-  {
-    id: "CALL-004",
-    type: "outbound",
-    status: "scheduled",
-    timestamp: "2024-01-19 08:00 AM",
-    reminderType: "Medication Reminder"
-  }
-];
 
 export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
   const { toast } = useToast();
-  const [reminders, setReminders] = useState<Reminder[]>(mockReminders);
-  const [callLogs] = useState<CallLog[]>(mockCallLogs);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [callLogs, setCallLogs] = useState<CallLog[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isCallDialogOpen, setIsCallDialogOpen] = useState(false);
   const [newReminder, setNewReminder] = useState({
-    type: "medication" as Reminder["type"],
-    title: "",
+    name: "",
     message: "",
     scheduledTime: "",
     frequency: "Daily",
-    channel: "call" as Reminder["channel"]
+    channel: "CALL" as "CALL" | "SMS" | "All channels"
   });
 
-  const toggleReminderStatus = (id: string) => {
-    setReminders(prev => prev.map(r => {
-      if (r.id === id) {
-        const newStatus = r.status === "active" ? "paused" : "active";
+  useEffect(() => {
+    Promise.all([
+      fetch(`${API_BASE_URL}/api/communications/reminders?patientId=${patientId}`).then(r => r.json()),
+      fetch(`${API_BASE_URL}/api/communications/calls?patientId=${patientId}`).then(r => r.json())
+    ])
+      .then(([remindersData, callLogsData]) => {
+        setReminders(remindersData || []);
+        setCallLogs(callLogsData || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, [patientId]);
+
+  const toggleReminderStatus = (id: string, currentStatus: string) => {
+    const newStatus = currentStatus === "Active" ? "Paused" : "Active";
+    fetch(`${API_BASE_URL}/api/communications/reminders/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    })
+      .then(res => res.json())
+      .then(updated => {
+        setReminders(prev => prev.map(r => r._id === id ? updated : r));
         toast({
-          title: newStatus === "active" ? "Reminder Activated" : "Reminder Paused",
-          description: `${r.title} has been ${newStatus === "active" ? "activated" : "paused"}.`
+          title: newStatus === "Active" ? "Reminder Activated" : "Reminder Paused",
+          description: `${updated.name} has been ${newStatus === "Active" ? "activated" : "paused"}.`
         });
-        return { ...r, status: newStatus };
-      }
-      return r;
-    }));
+      })
+      .catch(console.error);
   };
 
   const initiateCall = () => {
-    setIsCallDialogOpen(false);
-    toast({
-      title: "Call Initiated",
-      description: "Automated call is being placed to the patient.",
-    });
+    fetch(`${API_BASE_URL}/api/communications/calls/now`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patientId, reminderName: 'Manual Check-in' })
+    })
+      .then(res => res.json())
+      .then(data => {
+        setCallLogs(prev => [data.call, ...prev]);
+        setIsCallDialogOpen(false);
+        toast({
+          title: "Call Initiated",
+          description: "Automated call is being placed to the patient.",
+        });
+      })
+      .catch(console.error);
   };
 
   const addReminder = () => {
-    if (!newReminder.title || !newReminder.message || !newReminder.scheduledTime) {
+    if (!newReminder.name || !newReminder.message || !newReminder.scheduledTime) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields.",
@@ -197,72 +146,89 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
       return;
     }
 
-    const reminder: Reminder = {
-      id: `REM-${Date.now()}`,
+    const reminderPayload = {
       ...newReminder,
-      status: "active",
-      nextDue: new Date().toISOString()
+      patientId,
+      status: "Active",
+      nextTrigger: new Date().toLocaleDateString() + ' ' + newReminder.scheduledTime
     };
 
-    setReminders(prev => [...prev, reminder]);
-    setIsAddDialogOpen(false);
-    setNewReminder({
-      type: "medication",
-      title: "",
-      message: "",
-      scheduledTime: "",
-      frequency: "Daily",
-      channel: "call"
-    });
+    fetch(`${API_BASE_URL}/api/communications/reminders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reminderPayload)
+    })
+      .then(res => res.json())
+      .then(created => {
+        setReminders(prev => [...prev, created]);
+        setIsAddDialogOpen(false);
+        setNewReminder({
+          name: "",
+          message: "",
+          scheduledTime: "",
+          frequency: "Daily",
+          channel: "CALL"
+        });
 
-    toast({
-      title: "Reminder Created",
-      description: "New reminder has been scheduled successfully."
-    });
+        toast({
+          title: "Reminder Created",
+          description: "New reminder has been scheduled successfully."
+        });
+      })
+      .catch(console.error);
   };
 
-  const getReminderIcon = (type: Reminder["type"]) => {
-    switch (type) {
-      case "medication": return Pill;
-      case "appointment": return Calendar;
-      case "survey": return MessageSquare;
-      case "follow-up": return Phone;
-      default: return Bell;
-    }
+  const getReminderIcon = (name: string) => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes("medication")) return Pill;
+    if (lowerName.includes("visit") || lowerName.includes("appointment")) return Calendar;
+    if (lowerName.includes("survey")) return MessageSquare;
+    if (lowerName.includes("follow-up") || lowerName.includes("call")) return Phone;
+    return Bell;
   };
 
   const getChannelIcon = (channel: Reminder["channel"]) => {
     switch (channel) {
-      case "call": return Phone;
-      case "sms": return MessageSquare;
-      case "email": return Mail;
-      case "all": return Bell;
+      case "CALL": return Phone;
+      case "SMS": return MessageSquare;
+      case "All channels": return Bell;
+      default: return Bell;
     }
   };
 
   const getStatusBadge = (status: Reminder["status"]) => {
     switch (status) {
-      case "active":
+      case "Active":
         return <Badge className="bg-success/10 text-success border-success/20">Active</Badge>;
-      case "paused":
+      case "Paused":
         return <Badge className="bg-warning/10 text-warning border-warning/20">Paused</Badge>;
-      case "completed":
-        return <Badge className="bg-muted text-muted-foreground">Completed</Badge>;
+      default:
+        return <Badge className="bg-muted text-muted-foreground">{status}</Badge>;
     }
   };
 
-  const getCallStatusBadge = (status: CallLog["status"]) => {
+  const getCallStatusBadge = (status: CallLog["outcome"]) => {
     switch (status) {
-      case "completed":
+      case "Completed":
         return <Badge className="bg-success/10 text-success border-success/20 gap-1"><CheckCircle2 className="h-3 w-3" />Completed</Badge>;
-      case "no-answer":
+      case "No Answer":
         return <Badge className="bg-warning/10 text-warning border-warning/20 gap-1"><AlertCircle className="h-3 w-3" />No Answer</Badge>;
-      case "scheduled":
+      case "Scheduled":
         return <Badge className="bg-primary/10 text-primary border-primary/20 gap-1"><Clock className="h-3 w-3" />Scheduled</Badge>;
-      case "in-progress":
+      case "In-progress":
         return <Badge className="bg-accent/10 text-accent border-accent/20 gap-1"><PhoneCall className="h-3 w-3" />In Progress</Badge>;
     }
   };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -273,7 +239,7 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
             Reminders & Automated Calls
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage patient reminders and automated calling schedule
+            Manage subject reminders and automated calling schedule
           </p>
         </div>
         <div className="flex gap-2">
@@ -308,7 +274,7 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
                 </div>
                 <div className="space-y-2">
                   <Label>Custom Message (Optional)</Label>
-                  <Textarea 
+                  <Textarea
                     placeholder="Enter a custom message for the call..."
                     className="min-h-[80px]"
                   />
@@ -342,33 +308,16 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Reminder Type</Label>
-                  <Select 
-                    value={newReminder.type} 
-                    onValueChange={(v) => setNewReminder(prev => ({ ...prev, type: v as Reminder["type"] }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="medication">Medication</SelectItem>
-                      <SelectItem value="appointment">Appointment</SelectItem>
-                      <SelectItem value="survey">Survey</SelectItem>
-                      <SelectItem value="follow-up">Follow-up</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Title</Label>
-                  <Input 
-                    value={newReminder.title}
-                    onChange={(e) => setNewReminder(prev => ({ ...prev, title: e.target.value }))}
+                  <Label>Reminder Name</Label>
+                  <Input
+                    value={newReminder.name}
+                    onChange={(e) => setNewReminder(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="e.g., Morning Medication Reminder"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Message</Label>
-                  <Textarea 
+                  <Textarea
                     value={newReminder.message}
                     onChange={(e) => setNewReminder(prev => ({ ...prev, message: e.target.value }))}
                     placeholder="Message to be delivered to the patient..."
@@ -378,7 +327,7 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Time</Label>
-                    <Input 
+                    <Input
                       type="time"
                       value={newReminder.scheduledTime}
                       onChange={(e) => setNewReminder(prev => ({ ...prev, scheduledTime: e.target.value }))}
@@ -386,7 +335,7 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
                   </div>
                   <div className="space-y-2">
                     <Label>Frequency</Label>
-                    <Select 
+                    <Select
                       value={newReminder.frequency}
                       onValueChange={(v) => setNewReminder(prev => ({ ...prev, frequency: v }))}
                     >
@@ -394,28 +343,27 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Once">One-time</SelectItem>
+                        <SelectItem value="One-time">One-time</SelectItem>
                         <SelectItem value="Daily">Daily</SelectItem>
                         <SelectItem value="Weekly">Weekly</SelectItem>
-                        <SelectItem value="Monthly">Monthly</SelectItem>
+                        <SelectItem value="After visits">After visits</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Delivery Channel</Label>
-                  <Select 
+                  <Select
                     value={newReminder.channel}
-                    onValueChange={(v) => setNewReminder(prev => ({ ...prev, channel: v as Reminder["channel"] }))}
+                    onValueChange={(v) => setNewReminder(prev => ({ ...prev, channel: v as any }))}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="call">Voice Call</SelectItem>
-                      <SelectItem value="sms">SMS</SelectItem>
-                      <SelectItem value="email">Email</SelectItem>
-                      <SelectItem value="all">All Channels</SelectItem>
+                      <SelectItem value="CALL">Voice Call</SelectItem>
+                      <SelectItem value="SMS">SMS</SelectItem>
+                      <SelectItem value="All channels">All Channels</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -439,31 +387,31 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
           </h4>
           <div className="space-y-3">
             {reminders.map((reminder) => {
-              const ReminderIcon = getReminderIcon(reminder.type);
+              const ReminderIcon = getReminderIcon(reminder.name);
               const ChannelIcon = getChannelIcon(reminder.channel);
-              
+
               return (
                 <div
-                  key={reminder.id}
+                  key={reminder._id}
                   className={cn(
                     "p-4 rounded-lg border transition-colors",
-                    reminder.status === "paused" ? "bg-muted/30 border-muted" : "bg-card border-border hover:border-primary/30"
+                    reminder.status === "Paused" ? "bg-muted/30 border-muted" : "bg-card border-border hover:border-primary/30"
                   )}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3">
                       <div className={cn(
                         "p-2 rounded-lg",
-                        reminder.status === "paused" ? "bg-muted" : "bg-primary/10"
+                        reminder.status === "Paused" ? "bg-muted" : "bg-primary/10"
                       )}>
                         <ReminderIcon className={cn(
                           "h-4 w-4",
-                          reminder.status === "paused" ? "text-muted-foreground" : "text-primary"
+                          reminder.status === "Paused" ? "text-muted-foreground" : "text-primary"
                         )} />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{reminder.title}</span>
+                          <span className="font-medium">{reminder.name}</span>
                           {getStatusBadge(reminder.status)}
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
@@ -476,28 +424,28 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
                           </span>
                           <span className="flex items-center gap-1">
                             <ChannelIcon className="h-3 w-3" />
-                            {reminder.channel === "all" ? "All channels" : reminder.channel.toUpperCase()}
+                            {reminder.channel}
                           </span>
                         </div>
-                        {reminder.nextDue && (
+                        {reminder.nextTrigger && (
                           <p className="text-xs text-primary mt-1">
-                            Next: {reminder.nextDue}
+                            Next: {reminder.nextTrigger}
                           </p>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Switch
-                        checked={reminder.status === "active"}
-                        onCheckedChange={() => toggleReminderStatus(reminder.id)}
+                        checked={reminder.status === "Active"}
+                        onCheckedChange={() => toggleReminderStatus(reminder._id, reminder.status)}
                       />
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => toggleReminderStatus(reminder.id)}
+                        onClick={() => toggleReminderStatus(reminder._id, reminder.status)}
                       >
-                        {reminder.status === "active" ? (
+                        {reminder.status === "Active" ? (
                           <Pause className="h-4 w-4" />
                         ) : (
                           <Play className="h-4 w-4" />
@@ -519,15 +467,15 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
           <div className="space-y-2">
             {callLogs.map((call) => (
               <div
-                key={call.id}
+                key={call._id}
                 className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "p-2 rounded-full",
-                    call.type === "outbound" ? "bg-primary/10" : "bg-accent/10"
+                    call.direction === "Outbound" ? "bg-primary/10" : "bg-accent/10"
                   )}>
-                    {call.type === "outbound" ? (
+                    {call.direction === "Outbound" ? (
                       <PhoneCall className="h-4 w-4 text-primary" />
                     ) : (
                       <Phone className="h-4 w-4 text-accent" />
@@ -535,11 +483,11 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium capitalize">{call.type} Call</span>
-                      {getCallStatusBadge(call.status)}
+                      <span className="text-sm font-medium capitalize">{call.direction} Call</span>
+                      {getCallStatusBadge(call.outcome)}
                     </div>
-                    {call.reminderType && (
-                      <p className="text-xs text-muted-foreground">{call.reminderType}</p>
+                    {call.reminderName && (
+                      <p className="text-xs text-muted-foreground">{call.reminderName}</p>
                     )}
                     {call.notes && (
                       <p className="text-xs text-muted-foreground mt-1 max-w-md truncate">
@@ -551,7 +499,7 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
                 <div className="text-right">
                   <p className="text-sm">{call.timestamp}</p>
                   {call.duration && (
-                    <p className="text-xs text-muted-foreground">Duration: {call.duration}</p>
+                    <p className="text-sm text-muted-foreground">Duration: {call.duration}</p>
                   )}
                 </div>
               </div>

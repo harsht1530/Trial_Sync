@@ -210,9 +210,9 @@ export const SymptomLogger = ({ patientId }: SymptomLoggerProps) => {
       counts[s.severity]++;
     });
     return [
-      { name: 'Mild', value: counts.mild, fill: 'hsl(var(--success))' },
-      { name: 'Moderate', value: counts.moderate, fill: 'hsl(var(--warning))' },
-      { name: 'Severe', value: counts.severe, fill: 'hsl(var(--destructive))' }
+      { name: 'Mild', value: counts.mild, fill: '#0058AB' },
+      { name: 'Moderate', value: counts.moderate, fill: '#0058AB' },
+      { name: 'Severe', value: counts.severe, fill: '#0058AB' }
     ];
   };
 
@@ -267,7 +267,7 @@ export const SymptomLogger = ({ patientId }: SymptomLoggerProps) => {
             Symptom Tracking
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
-            Log and monitor patient-reported symptoms over time
+            Log and monitor subject-reported symptoms over time
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -462,7 +462,7 @@ export const SymptomLogger = ({ patientId }: SymptomLoggerProps) => {
                     <Area
                       type="monotone"
                       dataKey="count"
-                      stroke="hsl(var(--primary))"
+                      stroke="#0058AB"
                       fillOpacity={1}
                       fill="url(#colorCount)"
                       name="Symptoms"
@@ -491,9 +491,9 @@ export const SymptomLogger = ({ patientId }: SymptomLoggerProps) => {
                     <Line
                       type="monotone"
                       dataKey="avgPain"
-                      stroke="#8F3237"
+                      stroke="#0058AB"
                       strokeWidth={2}
-                      dot={{ fill: '#8F3237' }}
+                      dot={{ fill: '#0058AB' }}
                       name="Avg Pain"
                     />
                   </LineChart>

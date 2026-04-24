@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { API_BASE_URL } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -48,126 +49,43 @@ interface Submission {
     answer: string;
     type: "choice" | "scale" | "text";
   }[];
+  trialWeek?: string;
 }
 
 export const EPROSubmissions = ({ patientId }: EPROSubmissionsProps) => {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [showAllSubmissions, setShowAllSubmissions] = useState(false);
 
-  // Mock ePRO data
-  const eproStats = {
-    completed: 24,
-    pending: 2,
-    overdue: 1,
-    complianceRate: 89
+  const [eproStats, setEproStats] = useState({
+    completed: 0,
+    pending: 0,
+    overdue: 0,
+    complianceRate: 0
+  });
+  const [submissionsList, setSubmissionsList] = useState<Submission[]>([]);
+
+  const fetchSubmissions = () => {
+    fetch(`${API_BASE_URL}/api/epro/submissions?patientId=${patientId}`)
+      .then(res => res.json())
+      .then(data => {
+        setSubmissionsList(data.submissions || []);
+        if (data.summary) {
+          setEproStats({
+            completed: data.summary.totalCompleted || 0,
+            pending: data.summary.totalPending || 0,
+            overdue: data.summary.totalOverdue || 0,
+            complianceRate: data.summary.complianceRate || 0
+          });
+        }
+      })
+      .catch(console.error);
   };
 
-  const submissions: Submission[] = [
-    {
-      id: "EPRO-001",
-      formName: "Weekly Symptom Assessment",
-      submittedAt: "2024-01-20T09:15:00",
-      status: "Completed",
-      score: 42,
-      maxScore: 50,
-      phase: "Week 12",
-      responses: [
-        { question: "Overall pain level today?", answer: "3/10", type: "scale" },
-        { question: "Did you experience any nausea?", answer: "Mild", type: "choice" },
-        { question: "Hours of sleep last night?", answer: "7 hours", type: "text" },
-        { question: "Any new symptoms to report?", answer: "Slight headache in the evening", type: "text" }
-      ]
-    },
-    {
-      id: "EPRO-002",
-      formName: "Quality of Life Questionnaire",
-      submittedAt: "2024-01-19T14:30:00",
-      status: "Completed",
-      score: 78,
-      maxScore: 100,
-      phase: "Week 12",
-      responses: [
-        { question: "How would you rate your physical well-being?", answer: "Good", type: "choice" },
-        { question: "Have you felt limited in your daily activities?", answer: "Somewhat", type: "choice" },
-        { question: "Rate your energy levels today.", answer: "6/10", type: "scale" },
-        { question: "How satisfied are you with your sleep quality?", answer: "Very satisfied", type: "choice" }
-      ]
-    },
-    {
-      id: "EPRO-003",
-      formName: "Daily Pain Diary",
-      submittedAt: null,
-      status: "Pending",
-      score: null,
-      maxScore: 10,
-      phase: "Week 12"
-    },
-    {
-      id: "EPRO-004",
-      formName: "Medication Adherence Log",
-      submittedAt: null,
-      status: "Overdue",
-      score: null,
-      maxScore: 20,
-      phase: "Week 11"
-    },
-    {
-      id: "EPRO-005",
-      formName: "Adverse Event Report",
-      submittedAt: "2024-01-15T11:20:00",
-      status: "Completed",
-      score: null,
-      maxScore: null,
-      phase: "Week 11",
-      responses: [
-        { question: "Type of event?", answer: "Dizziness", type: "text" },
-        { question: "Severity level?", answer: "Moderate", type: "choice" },
-        { question: "Start date/time?", answer: "2024-01-15 08:00 AM", type: "text" },
-        { question: "Is the event still ongoing?", answer: "No", type: "choice" }
-      ]
-    },
-    {
-      id: "EPRO-006",
-      formName: "Weekly Symptom Assessment",
-      submittedAt: "2024-01-13T08:45:00",
-      status: "Completed",
-      score: 38,
-      maxScore: 50,
-      phase: "Week 11",
-      responses: [
-        { question: "Overall pain level today?", answer: "4/10", type: "scale" },
-        { question: "Did you experience any nausea?", answer: "None", type: "choice" },
-        { question: "Hours of sleep last night?", answer: "6 hours", type: "text" }
-      ]
-    },
-    {
-      id: "EPRO-007",
-      formName: "Quality of Life Questionnaire",
-      submittedAt: "2024-01-12T10:00:00",
-      status: "Completed",
-      score: 82,
-      maxScore: 100,
-      phase: "Week 11",
-      responses: [
-        { question: "Physical well-being?", answer: "Excellent", type: "choice" },
-        { question: "Energy level?", answer: "8/10", type: "scale" }
-      ]
-    },
-    {
-      id: "EPRO-008",
-      formName: "Daily Pain Diary",
-      submittedAt: "2024-01-11T20:30:00",
-      status: "Completed",
-      score: 2,
-      maxScore: 10,
-      phase: "Week 11",
-      responses: [
-        { question: "Pain level?", answer: "2/10", type: "scale" }
-      ]
-    }
-  ];
+  useEffect(() => {
+    fetchSubmissions();
+  }, [patientId]);
 
-  const displayedSubmissions = showAllSubmissions ? submissions : submissions.slice(0, 5);
+  const displayedSubmissions = showAllSubmissions ? submissionsList : submissionsList.slice(0, 5);
 
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
@@ -218,8 +136,8 @@ export const EPROSubmissions = ({ patientId }: EPROSubmissionsProps) => {
                 <p className="text-xs text-muted-foreground">Pending</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-destructive">{eproStats.overdue}</p>
-                <p className="text-xs text-muted-foreground">Overdue</p>
+                <p className={`text-2xl font-bold ${eproStats.overdue > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>{eproStats.overdue}</p>
+                <p className={`text-xs ${eproStats.overdue > 0 ? 'text-destructive' : 'text-muted-foreground'}`}>Overdue</p>
               </div>
             </div>
 
@@ -249,7 +167,13 @@ export const EPROSubmissions = ({ patientId }: EPROSubmissionsProps) => {
                     stroke="currentColor"
                     strokeWidth="4"
                     strokeDasharray={`${eproStats.complianceRate * 1.256} 125.6`}
-                    className="text-success"
+                    className={
+                      eproStats.complianceRate >= 90
+                        ? "text-success"
+                        : eproStats.complianceRate >= 75
+                          ? "text-warning"
+                          : "text-destructive"
+                    }
                   />
                 </svg>
                 <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold">
@@ -284,7 +208,7 @@ export const EPROSubmissions = ({ patientId }: EPROSubmissionsProps) => {
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="text-xs">
-                      {submission.phase}
+                      {submission.phase || submission.trialWeek}
                     </Badge>
                   </TableCell>
                   <TableCell>{getStatusBadge(submission.status)}</TableCell>
@@ -339,7 +263,7 @@ export const EPROSubmissions = ({ patientId }: EPROSubmissionsProps) => {
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-lg bg-muted/30 border">
                             <div className="space-y-1">
                               <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                <User className="h-3 w-3" /> Patient ID
+                                <User className="h-3 w-3" /> Subject ID
                               </p>
                               <p className="text-sm font-semibold">{patientId}</p>
                             </div>
@@ -355,7 +279,7 @@ export const EPROSubmissions = ({ patientId }: EPROSubmissionsProps) => {
                               <p className="text-xs text-muted-foreground flex items-center gap-1">
                                 <Layers className="h-3 w-3" /> Phase
                               </p>
-                              <p className="text-sm font-semibold">{submission.phase}</p>
+                              <p className="text-sm font-semibold">{submission.phase || submission.trialWeek}</p>
                             </div>
                             <div className="space-y-1">
                               <p className="text-xs text-muted-foreground flex items-center gap-1">

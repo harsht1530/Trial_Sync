@@ -71,16 +71,16 @@
     --shadow-lg: 0 10px 15px -3px hsl(227 51% 15% / 0.1), 0 4px 6px -4px hsl(227 51% 15% / 0.05);
     --shadow-glow: 0 0 40px hsl(209 100% 34% / 0.15);
 
-    /* Sidebar - Capgemini Dark Blue #121A38 */
-    --sidebar-background: 227 51% 15%;
+    /* Sidebar - Capgemini Blue #0058AB */
+    --sidebar-background: 209 100% 34%;
     --sidebar-foreground: 210 20% 98%;
     --sidebar-primary: 196 88% 53%;
     /* Light Blue for primary actions in sidebar */
-    --sidebar-primary-foreground: 227 51% 15%;
-    --sidebar-accent: 209 80% 30%;
-    /* Slightly lighter Dark Blue or Capgemini Blue variant */
+    --sidebar-primary-foreground: 209 100% 34%;
+    --sidebar-accent: 209 100% 28%;
+    /* Darker Blue for hover/active states */
     --sidebar-accent-foreground: 210 20% 98%;
-    --sidebar-border: 227 40% 25%;
+    --sidebar-border: 209 100% 30%;
     --sidebar-ring: 196 88% 53%;
   }
 
@@ -126,15 +126,15 @@
     --input: 227 40% 25%;
     --ring: 196 88% 53%;
 
-    --sidebar-background: 227 60% 8%;
-    /* Even darker */
+    --sidebar-background: 209 100% 12%;
+    /* Darker Capgemini Blue */
     --sidebar-foreground: 210 20% 98%;
     --sidebar-primary: 178 100% 42%;
     /* Turquoise */
-    --sidebar-primary-foreground: 227 51% 15%;
-    --sidebar-accent: 227 51% 20%;
+    --sidebar-primary-foreground: 209 100% 12%;
+    --sidebar-accent: 209 100% 18%;
     --sidebar-accent-foreground: 210 20% 98%;
-    --sidebar-border: 227 40% 20%;
+    --sidebar-border: 209 100% 15%;
     --sidebar-ring: 178 100% 42%;
   }
 }

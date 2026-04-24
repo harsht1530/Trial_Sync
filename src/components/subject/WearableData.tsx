@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { API_BASE_URL } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
@@ -9,72 +10,44 @@ import {
   Flame,
   Activity,
   Battery,
-  Wifi
+  Wifi,
+  Loader2
 } from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface WearableDataProps {
   patientId: string;
 }
 
 export const WearableData = ({ patientId }: WearableDataProps) => {
-  // Mock wearable data
-  const wearableInfo = {
-    device: "Fitbit Sense 2",
-    lastSync: "2024-01-20T14:32:00",
-    batteryLevel: 78,
-    connectionStatus: "Connected"
-  };
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const metrics = [
-    {
-      icon: Heart,
-      label: "Heart Rate",
-      value: "72",
-      unit: "bpm",
-      trend: "Normal",
-      trendColor: "text-success",
-      bgColor: "bg-destructive/10",
-      iconColor: "text-destructive"
-    },
-    {
-      icon: Footprints,
-      label: "Steps Today",
-      value: "8,432",
-      unit: "steps",
-      trend: "+12%",
-      trendColor: "text-success",
-      bgColor: "bg-primary/10",
-      iconColor: "text-primary"
-    },
-    {
-      icon: Moon,
-      label: "Sleep",
-      value: "7.2",
-      unit: "hours",
-      trend: "Good",
-      trendColor: "text-success",
-      bgColor: "bg-accent/10",
-      iconColor: "text-accent"
-    },
-    {
-      icon: Flame,
-      label: "Calories",
-      value: "1,847",
-      unit: "kcal",
-      trend: "On track",
-      trendColor: "text-success",
-      bgColor: "bg-warning/10",
-      iconColor: "text-warning"
-    }
-  ];
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/subjects/${patientId}/wearable-data`)
+      .then(res => res.json())
+      .then(resData => {
+        setData(resData);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, [patientId]);
 
-  const recentReadings = [
-    { time: "14:32", heartRate: 72, steps: 8432, activity: "Resting" },
-    { time: "13:00", heartRate: 98, steps: 7856, activity: "Walking" },
-    { time: "12:00", heartRate: 68, steps: 6234, activity: "Resting" },
-    { time: "11:00", heartRate: 112, steps: 5890, activity: "Exercise" },
-    { time: "10:00", heartRate: 74, steps: 4123, activity: "Resting" }
-  ];
+  if (loading || !data || !data.wearableInfo) {
+    return (
+      <Card className="h-fit">
+        <CardContent className="flex flex-col items-center justify-center h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const { wearableInfo, metrics, recentReadings } = data;
+  const iconMap: any = { Heart, Footprints, Moon, Flame };
 
   return (
     <Card className="h-fit">
@@ -106,22 +79,25 @@ export const WearableData = ({ patientId }: WearableDataProps) => {
       <CardContent className="space-y-6">
         {/* Metrics Grid */}
         <div className="grid grid-cols-2 gap-3">
-          {metrics.map((metric, index) => (
-            <div 
-              key={index}
-              className={`p-3 rounded-lg ${metric.bgColor}`}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <metric.icon className={`h-4 w-4 ${metric.iconColor}`} />
-                <span className="text-xs text-muted-foreground">{metric.label}</span>
+          {(metrics || []).map((metric: any, index: number) => {
+            const IconComponent = iconMap[metric.iconName] || Activity;
+            return (
+              <div 
+                key={index}
+                className={`p-3 rounded-lg ${metric.bgColor || "bg-muted/30"}`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <IconComponent className={`h-4 w-4 ${metric.iconColor || "text-muted-foreground"}`} />
+                  <span className="text-xs text-muted-foreground">{metric.label || "N/A"}</span>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-semibold">{metric.value || "0"}</span>
+                  <span className="text-xs text-muted-foreground">{metric.unit || ""}</span>
+                </div>
+                <span className={`text-xs ${metric.trendColor || "text-muted-foreground"}`}>{metric.trend || ""}</span>
               </div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-xl font-semibold">{metric.value}</span>
-                <span className="text-xs text-muted-foreground">{metric.unit}</span>
-              </div>
-              <span className={`text-xs ${metric.trendColor}`}>{metric.trend}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Activity Goal Progress */}
@@ -140,22 +116,22 @@ export const WearableData = ({ patientId }: WearableDataProps) => {
             Recent Readings
           </h4>
           <div className="space-y-2">
-            {recentReadings.map((reading, index) => (
+            {(recentReadings || []).map((reading: any, index: number) => (
               <div 
                 key={index}
                 className="flex items-center justify-between p-2 bg-muted/30 rounded-lg text-sm"
               >
-                <span className="text-muted-foreground w-14">{reading.time}</span>
+                <span className="text-muted-foreground w-14">{reading.time || "--:--"}</span>
                 <span className="flex items-center gap-1">
                   <Heart className="h-3 w-3 text-destructive" />
-                  {reading.heartRate}
+                  {reading.heartRate || "--"}
                 </span>
                 <span className="flex items-center gap-1">
                   <Footprints className="h-3 w-3 text-primary" />
-                  {reading.steps.toLocaleString()}
+                  {(reading.steps || 0).toLocaleString()}
                 </span>
                 <Badge variant="outline" className="text-xs">
-                  {reading.activity}
+                  {reading.activity || "None"}
                 </Badge>
               </div>
             ))}

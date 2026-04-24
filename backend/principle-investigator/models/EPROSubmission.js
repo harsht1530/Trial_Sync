@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { piConn } = require('../../config/db');
 
 const schema = new mongoose.Schema({
   formName: String,
@@ -16,4 +17,4 @@ const schema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
-module.exports = mongoose.model('EPROSubmission', schema);
+module.exports = piConn.model('EPROSubmission', schema);

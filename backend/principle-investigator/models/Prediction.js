@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { piConn } = require('../../config/db');
 
 const predictionSchema = new mongoose.Schema({
   piId: { type: String, required: true },
@@ -14,4 +15,4 @@ const predictionSchema = new mongoose.Schema({
   collection: 'Prediction'
 });
 
-module.exports = mongoose.model('Prediction', predictionSchema);
+module.exports = piConn.model('Prediction', predictionSchema);

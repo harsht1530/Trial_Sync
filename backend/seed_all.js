@@ -2,21 +2,21 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 
 // Models
-const Subject = require('./models/Subject');
-const Summary = require('./models/Summary');
-const Trial = require('./models/Trial');
-const Activity = require('./models/Activity');
-const ValidationStat = require('./models/ValidationStat');
-const EngagementStat = require('./models/EngagementStat');
-const Prediction = require('./models/Prediction');
-const MedicalHistory = require('./models/MedicalHistory');
-const Reminder = require('./models/Reminder');
-const WearableData = require('./models/WearableData');
-const CallLog = require('./models/CallLog');
-const ValidationFlag = require('./models/ValidationFlag');
-const AuditEntry = require('./models/AuditEntry');
-const EPROForm = require('./models/EPROForm');
-const EPROSubmission = require('./models/EPROSubmission');
+const Subject = require('./principle-investigator/models/Subject');
+const Summary = require('./principle-investigator/models/Summary');
+const Trial = require('./principle-investigator/models/Trial');
+const Activity = require('./principle-investigator/models/Activity');
+const ValidationStat = require('./principle-investigator/models/ValidationStat');
+const EngagementStat = require('./principle-investigator/models/EngagementStat');
+const Prediction = require('./principle-investigator/models/Prediction');
+const MedicalHistory = require('./principle-investigator/models/MedicalHistory');
+const Reminder = require('./principle-investigator/models/Reminder');
+const WearableData = require('./principle-investigator/models/WearableData');
+const CallLog = require('./principle-investigator/models/CallLog');
+const ValidationFlag = require('./principle-investigator/models/ValidationFlag');
+const AuditEntry = require('./principle-investigator/models/AuditEntry');
+const EPROForm = require('./principle-investigator/models/EPROForm');
+const EPROSubmission = require('./principle-investigator/models/EPROSubmission');
 
 const MONGO_URI = process.env.MONGODB_URI;
 const DB_NAME = process.env.DB_NAME;

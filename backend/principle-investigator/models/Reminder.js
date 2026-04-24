@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { piConn } = require('../../config/db');
 
 const schema = new mongoose.Schema({
   patientId: { type: String, required: true },
@@ -11,4 +12,4 @@ const schema = new mongoose.Schema({
   nextTrigger: { type: String }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Reminder', schema);
+module.exports = piConn.model('Reminder', schema);

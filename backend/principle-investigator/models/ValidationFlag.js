@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { piConn } = require('../../config/db');
 
 const schema = new mongoose.Schema({
   id: { type: String, required: true },
@@ -16,4 +17,4 @@ const schema = new mongoose.Schema({
   trial: String
 }, { timestamps: true });
 
-module.exports = mongoose.model('ValidationFlag', schema);
+module.exports = piConn.model('ValidationFlag', schema);

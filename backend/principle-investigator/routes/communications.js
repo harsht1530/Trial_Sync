@@ -5,7 +5,7 @@ const Subject = require('../models/Subject');
 const ValidationFlag = require('../models/ValidationFlag');
 const Reminder = require('../models/Reminder');
 const CallLog = require('../models/CallLog');
-const { callOllama, getSystemPrompt } = require('../utils/aiAssistant');
+const { callOllama, getSystemPrompt } = require('../../utils/aiAssistant');
 
 // GET all reminders for a patient
 router.get('/reminders', async (req, res) => {

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { piConn } = require('../../config/db');
 
 const schema = new mongoose.Schema({
   id: { type: String, required: true },
@@ -11,4 +12,4 @@ const schema = new mongoose.Schema({
   notes: String
 }, { timestamps: true });
 
-module.exports = mongoose.model('AuditEntry', schema);
+module.exports = piConn.model('AuditEntry', schema);

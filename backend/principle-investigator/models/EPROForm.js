@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { piConn } = require('../../config/db');
 
 const schema = new mongoose.Schema({
   formName: String,
@@ -7,4 +8,4 @@ const schema = new mongoose.Schema({
   maxScore: Number
 });
 
-module.exports = mongoose.model('EPROForm', schema);
+module.exports = piConn.model('EPROForm', schema);

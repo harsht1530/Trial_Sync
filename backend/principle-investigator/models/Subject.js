@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { piConn } = require('../../config/db');
 
 const subjectSchema = new mongoose.Schema({
   piId: { type: String, required: true },
@@ -27,4 +28,4 @@ const subjectSchema = new mongoose.Schema({
   collection: 'Subject' // Force Mongoose to use 'Subject' instead of 'subjects'
 });
 
-module.exports = mongoose.model('Subject', subjectSchema);
+module.exports = piConn.model('Subject', subjectSchema);

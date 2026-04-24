@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { piConn } = require('../../config/db');
 
 const engagementStatSchema = new mongoose.Schema({
   piId: { type: String, required: true },
@@ -11,4 +12,4 @@ const engagementStatSchema = new mongoose.Schema({
   collection: 'EngagementStat'
 });
 
-module.exports = mongoose.model('EngagementStat', engagementStatSchema);
+module.exports = piConn.model('EngagementStat', engagementStatSchema);

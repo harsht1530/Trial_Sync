@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const Subject = require('./models/Subject');
+const Subject = require('./principle-investigator/models/Subject');
 const dummyData = require('./dummy_data.json');
 
 require('dotenv').config();

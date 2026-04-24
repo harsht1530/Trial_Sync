@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { piConn } = require('../../config/db');
 
 const schema = new mongoose.Schema({
   patientId: { type: String, required: true },
@@ -21,4 +22,4 @@ const schema = new mongoose.Schema({
   recentReadings: [{ time: String, heartRate: Number, steps: Number, activity: String }]
 }, { timestamps: true });
 
-module.exports = mongoose.model('WearableData', schema);
+module.exports = piConn.model('WearableData', schema);

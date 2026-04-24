@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { piConn } = require('../../config/db');
 
 const chatMessageSchema = new mongoose.Schema({
   patientId: { type: String, required: true },
@@ -13,4 +14,4 @@ const chatMessageSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-module.exports = mongoose.model('ChatMessage', chatMessageSchema);
+module.exports = piConn.model('ChatMessage', chatMessageSchema);

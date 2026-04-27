@@ -14,6 +14,21 @@ router.get('/subjects', hubController.getSubjects);
 router.get('/priority-recommendations', hubController.getPriorityRecommendations);
 router.post('/add-subject', hubController.addSubject);
 
+// Visits & Scheduling
+router.get('/visits/weekly', hubController.getWeeklySchedule);
+router.get('/visits/conflicts', hubController.detectConflicts);
+router.post('/visits/auto-resolve', hubController.autoResolveConflict);
+router.get('/visits/upcoming', hubController.getUpcomingVisits);
+router.get('/visits/nudges', hubController.getAINudges);
+router.post('/visits/book', hubController.bookVisit);
+
+// Safety & Adverse Events
+router.get('/safety/summary', hubController.getSafetySummary);
+router.get('/safety/anomalies', hubController.getSafetyAnomalies);
+router.get('/safety/ae-list', hubController.getAEList);
+router.post('/safety/report-ae', hubController.reportAE);
+router.post('/safety/escalate', hubController.escalateToPI);
+
 router.get('/agents', async (req, res) => {
   try {
     const agents = await Agent.find();

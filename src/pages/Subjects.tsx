@@ -272,8 +272,8 @@ export default function Patients() {
                                 <User className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                               </div>
                               <div className="min-w-0">
-                                <p className="font-medium text-sm sm:text-base truncate">{patient.name}</p>
-                                <p className="text-xs sm:text-sm text-muted-foreground truncate">{patient.id} • {patient.age}</p>
+                                <p className="font-medium text-sm sm:text-base truncate">{patient.id}</p>
+                                <p className="text-xs sm:text-sm text-muted-foreground truncate">• {patient.age}</p>
                               </div>
                             </div>
                           </td>
@@ -336,13 +336,13 @@ export default function Patients() {
                               <DropdownMenuContent align="end" className="w-48">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                
+
                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/subjects/${patient.id}`); }}>
                                   View Subject
                                 </DropdownMenuItem>
 
                                 {patient.status === 'alert' && (
-                                  <DropdownMenuItem 
+                                  <DropdownMenuItem
                                     className="text-destructive focus:bg-destructive/10 focus:text-destructive"
                                     onClick={(e) => {
                                       e.stopPropagation();

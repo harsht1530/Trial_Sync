@@ -104,8 +104,9 @@ export function SubjectTable() {
                         <User className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-sm sm:text-base truncate">{subject.name}</p>
-                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{subject.id} • {subject.age}</p>
+                        {/* <p className="font-medium text-sm sm:text-base truncate">{subject.name}</p> */}
+                        <p className="font-medium text-sm sm:text-base truncate">{subject.id}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{subject.age}</p>
                       </div>
                     </div>
                   </td>
@@ -165,7 +166,7 @@ export function SubjectTable() {
             })}
           </tbody>
         </table>
-        
+
         {loading ? (
           <div className="p-8 text-center text-muted-foreground flex justify-center items-center">
             <Loader2 className="h-6 w-6 animate-spin" />

@@ -109,9 +109,9 @@ export function SidebarContent({ activeTab: propActiveTab, onTabChange, classNam
       </div>
       {/* Main Navigation */}
       <nav className="flex flex-col gap-1 p-4">
-        <p className="px-3 mb-2 text-[10px] font-semibold text-sidebar-foreground/50 uppercase tracking-wider">
+        <a href="https://multiplierai.co/agent/Trial_Sync_3/" className="px-3 mb-2 text-[10px] font-semibold text-sidebar-foreground/50 uppercase tracking-wider hover:text-sidebar-foreground transition-colors cursor-pointer block">
           Main Menu
-        </p>
+        </a>
         {navigation.map((item) => {
           const isActive = activeTab === item.id;
           return (

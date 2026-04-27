@@ -94,7 +94,7 @@ export function EngagementWidget() {
                   <span className="text-[10px] sm:text-xs font-medium">{engagement.initials}</span>
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm font-medium">{engagement.patient}</p>
+                  <p className="text-xs sm:text-sm font-medium">{engagement.piId}</p>
                   <p className="text-[10px] sm:text-xs text-muted-foreground">{engagement.type}</p>
                 </div>
               </div>

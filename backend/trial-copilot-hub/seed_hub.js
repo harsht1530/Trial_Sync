@@ -14,6 +14,9 @@ const HubAE = require('./models/HubAE');
 const HubSafetyAnomaly = require('./models/HubSafetyAnomaly');
 const HubAuditLog = require('./models/HubAuditLog');
 const HubEscalation = require('./models/HubEscalation');
+const HubComplianceScore = require('./models/HubComplianceScore');
+const HubProtocolDeviation = require('./models/HubProtocolDeviation');
+const HubComplianceRecommendation = require('./models/HubComplianceRecommendation');
 
 const SITE_ID = "SITE-NY-001";
 const COORDINATOR = "Maria";
@@ -35,6 +38,9 @@ const seedHubData = async () => {
         await HubSafetyAnomaly.deleteMany({});
         await HubAuditLog.deleteMany({});
         await HubEscalation.deleteMany({});
+        await HubComplianceScore.deleteMany({});
+        await HubProtocolDeviation.deleteMany({});
+        await HubComplianceRecommendation.deleteMany({});
 
         console.log('Seeding Health Snapshot...');
         await HubSiteHealth.create({
@@ -183,6 +189,58 @@ const seedHubData = async () => {
             status: "active",
             siteId: SITE_ID
         });
+
+        console.log('Seeding Compliance Scores...');
+        await HubComplianceScore.insertMany([
+            { trialId: "ONCO-2024-A1", siteId: SITE_ID, overallScore: 92, healthBand: "green", weekOnWeekChange: 2, componentScores: { visits: 90, labs: 94, consent: 100, epro: 92 } },
+            { trialId: "CARDIO-2025-B3", siteId: SITE_ID, overallScore: 82, healthBand: "amber", weekOnWeekChange: -6, componentScores: { visits: 78, labs: 85, consent: 100, epro: 80 } },
+            { trialId: "NEURO-2025-C1", siteId: SITE_ID, overallScore: 95, healthBand: "green", weekOnWeekChange: 0, componentScores: { visits: 94, labs: 96, consent: 100, epro: 95 } },
+            { trialId: "ENDO-2024-D2", siteId: SITE_ID, overallScore: 68, healthBand: "red", weekOnWeekChange: -2, componentScores: { visits: 65, labs: 70, consent: 90, epro: 68 } },
+        ]);
+
+        console.log('Seeding Protocol Deviations...');
+        await HubProtocolDeviation.insertMany([
+            { 
+              subjectId: "P-0031", trialId: "CARDIO-2025-B3", siteId: SITE_ID, type: "Missed Visit", severity: "Major", 
+              description: "Subject missed Visit 4 (Infusion) and the protocol-defined ±3 day window has expired.",
+              status: "Unresolved", aiNote: "AI detected window expiration. Subject previously missed Visit 2.",
+              repeated_deviation: true, loggedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+            },
+            { 
+              subjectId: "P-0018", trialId: "ONCO-2024-A1", siteId: SITE_ID, type: "Out-of-window Lab", severity: "Minor", 
+              description: "Lab draw for Visit 6 performed 4 hours outside the specified 2-hour post-dose window.",
+              status: "Deferred", deferralReason: "SC awaiting sponsor guidance on data impact.",
+              followUpDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+              loggedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+            },
+            { 
+              subjectId: "P-0007", trialId: "ONCO-2024-A1", siteId: SITE_ID, type: "Missing eCRF", severity: "Minor", 
+              description: "Vital signs page for Visit 5 has not been submitted within 24h as required.",
+              status: "Unresolved", loggedDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
+            },
+            { 
+              subjectId: "P-0050", trialId: "ENDO-2024-D2", siteId: SITE_ID, type: "Informed Consent", severity: "Major", 
+              description: "Failure to use the latest version (v3.2) of Informed Consent Form for subject re-consenting.",
+              status: "Unresolved", aiNote: "Critical regulatory violation. AI recommends immediate re-consenting using correct form.",
+              loggedDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+            }
+        ]);
+
+        console.log('Seeding Compliance Recommendations...');
+        await HubComplianceRecommendation.insertMany([
+            { 
+              text: "Compliance for CARDIO-2025-B3 dropped by 6% this week. AI identifies 'Missed Visit' pattern.",
+              recommendationType: "score_drop", trialId: "CARDIO-2025-B3", priorityRank: 1, siteId: SITE_ID
+            },
+            { 
+              text: "Subject P-0031 shows a repeat 'Missed Visit' pattern (2 deviations in 30 days).",
+              recommendationType: "repeated_deviation", patientId: "P-0031", trialId: "CARDIO-2025-B3", priorityRank: 2, siteId: SITE_ID
+            },
+            { 
+              text: "Missing lab draws for 3 patients in ENDO-2024-D2 screening phase.",
+              recommendationType: "missing_labs", trialId: "ENDO-2024-D2", priorityRank: 3, siteId: SITE_ID
+            }
+        ]);
 
         console.log('Hub data seeded successfully!');
         process.exit(0);

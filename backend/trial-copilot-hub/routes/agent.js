@@ -29,6 +29,14 @@ router.get('/safety/ae-list', hubController.getAEList);
 router.post('/safety/report-ae', hubController.reportAE);
 router.post('/safety/escalate', hubController.escalateToPI);
 
+// Compliance & Protocol Adherence
+router.get('/compliance/health-score', hubController.getComplianceHealthScore);
+router.get('/compliance/recommendations', hubController.getComplianceRecommendations);
+router.get('/compliance/deviations', hubController.getProtocolDeviations);
+router.post('/compliance/resolve', hubController.resolveDeviation);
+router.post('/compliance/defer', hubController.deferDeviation);
+router.post('/compliance/assess', hubController.assessCompliance);
+
 router.get('/agents', async (req, res) => {
   try {
     const agents = await Agent.find();

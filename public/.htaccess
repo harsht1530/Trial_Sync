@@ -1,0 +1,13 @@
+<IfModule mod_headers.c>
+    Header always set Content-Security-Policy "default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://csp.secureserver.net https://www.youtube.com https://clinik.multiplierai.co https://cmzcwtpfmivpkfhxjlok.supabase.co http://localhost:5000 ws://localhost:*; img-src 'self' data: https:; font-src 'self' data: https:;"
+</IfModule>
+
+# Handle SPA Routing
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /agent/Trial_Sync_2/
+    RewriteRule ^index\.html$ - [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule . /agent/Trial_Sync_2/index.html [L]
+</IfModule>

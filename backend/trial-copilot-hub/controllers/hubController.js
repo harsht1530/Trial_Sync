@@ -9,6 +9,9 @@ const HubAE = require('../models/HubAE');
 const HubSafetyAnomaly = require('../models/HubSafetyAnomaly');
 const HubAuditLog = require('../models/HubAuditLog');
 const HubEscalation = require('../models/HubEscalation');
+const HubComplianceScore = require('../models/HubComplianceScore');
+const HubProtocolDeviation = require('../models/HubProtocolDeviation');
+const HubComplianceRecommendation = require('../models/HubComplianceRecommendation');
 
 exports.getHealthSnapshot = async (req, res) => {
   try {
@@ -490,6 +493,222 @@ exports.escalateToPI = async (req, res) => {
       escalationId: escalation._id,
       piDetails: { id: 'USER-PI-001', name: 'Dr. Sarah Smith' },
       timestamp: escalation.timestamp
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getComplianceHealthScore = async (req, res) => {
+  try {
+    const siteId = 'SITE-NY-001';
+    const scores = await HubComplianceScore.find({ siteId });
+    res.json(scores);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getComplianceRecommendations = async (req, res) => {
+  try {
+    const siteId = 'SITE-NY-001';
+    const recommendations = await HubComplianceRecommendation.find({ siteId }).sort({ priorityRank: 1 });
+    res.json(recommendations);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getProtocolDeviations = async (req, res) => {
+  try {
+    const siteId = 'SITE-NY-001';
+    const { status, trial_id } = req.query;
+
+    let query = { siteId };
+    if (status) query.status = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    if (trial_id) query.trialId = trial_id;
+
+    const deviations = await HubProtocolDeviation.find(query)
+      .sort({ severity: 1, loggedDate: 1 }); // Major (alphabetical/numeric) and oldest first
+
+    const totalCount = await HubProtocolDeviation.countDocuments({ siteId });
+    const unresolvedCount = await HubProtocolDeviation.countDocuments({ 
+      siteId, 
+      status: { $in: ['Unresolved', 'Deferred'] } 
+    });
+
+    res.json({
+      deviations,
+      summary: {
+        total_count: totalCount,
+        unresolved_count: unresolvedCount
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.resolveDeviation = async (req, res) => {
+  try {
+    const { deviationId, resolution_note, resolved_by } = req.body;
+
+    if (!resolution_note || resolution_note.length < 10) {
+      return res.status(400).json({ error: 'Resolution note is required and must be at least 10 characters long.' });
+    }
+
+    const deviation = await HubProtocolDeviation.findByIdAndUpdate(
+      deviationId,
+      {
+        status: 'Resolved',
+        resolutionNote: resolution_note,
+        resolvedBy: resolved_by,
+        resolutionTimestamp: new Date()
+      },
+      { new: true }
+    );
+
+    if (!deviation) {
+      return res.status(404).json({ error: 'Deviation not found' });
+    }
+
+    // Immutable Audit Log
+    await HubAuditLog.create({
+      userId: resolved_by || 'USER-SC-001',
+      actionType: 'RESOLVE_DEVIATION',
+      entityId: deviationId,
+      details: { note: resolution_note }
+    });
+
+    res.json(deviation);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.deferDeviation = async (req, res) => {
+  try {
+    const { deviationId, deferral_reason, follow_up_date, userId } = req.body;
+
+    if (!deferral_reason) {
+      return res.status(400).json({ error: 'Deferral reason is required.' });
+    }
+
+    const deviation = await HubProtocolDeviation.findByIdAndUpdate(
+      deviationId,
+      {
+        status: 'Deferred',
+        deferralReason: deferral_reason,
+        followUpDate: follow_up_date ? new Date(follow_up_date) : null
+      },
+      { new: true }
+    );
+
+    if (!deviation) {
+      return res.status(404).json({ error: 'Deviation not found' });
+    }
+
+    // Immutable Audit Log
+    await HubAuditLog.create({
+      userId: userId || 'USER-SC-001',
+      actionType: 'DEFER_DEVIATION',
+      entityId: deviationId,
+      details: { reason: deferral_reason, followUp: follow_up_date }
+    });
+
+    res.json(deviation);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.assessCompliance = async (req, res) => {
+  try {
+    const siteId = 'SITE-NY-001';
+    const { userId } = req.body;
+
+    // 1. Logic for "Visits completed within protocol window / Total scheduled visits"
+    // For the demo, we will refresh the scores with small random fluctuations or logic-based updates
+    const activeTrials = await HubTrial.find({ siteId, status: { $ne: 'Closeout' } });
+    
+    for (const trial of activeTrials) {
+      const currentScoreObj = await HubComplianceScore.findOne({ trialId: trial.trialId, siteId });
+      const prevScore = currentScoreObj ? currentScoreObj.overallScore : 85;
+      
+      // Calculate new score based on visits (Mocked for now based on requirement logic)
+      // (Visits completed within window / Total scheduled visits)
+      const totalVisits = await HubVisit.countDocuments({ trialId: trial.trialId, siteId });
+      const compliantVisits = await HubVisit.countDocuments({ trialId: trial.trialId, siteId, state: 'standard' });
+      
+      let newScore = totalVisits > 0 ? Math.round((compliantVisits / totalVisits) * 100) : 100;
+      
+      // Edge case: if it drops more than 5%, we'll trigger a recommendation
+      const wowChange = newScore - prevScore;
+      
+      let band = 'green';
+      if (newScore < 75) band = 'red';
+      else if (newScore < 90) band = 'amber';
+
+      await HubComplianceScore.findOneAndUpdate(
+        { trialId: trial.trialId, siteId },
+        {
+          overallScore: newScore,
+          healthBand: band,
+          weekOnWeekChange: wowChange,
+          lastAssessmentDate: new Date(),
+          componentScores: {
+            visits: newScore,
+            labs: Math.floor(Math.random() * 20) + 80,
+            consent: 100,
+            epro: Math.floor(Math.random() * 10) + 90
+          }
+        },
+        { upsert: true, new: true }
+      );
+
+      if (wowChange <= -5) {
+        await HubComplianceRecommendation.create({
+          siteId,
+          trialId: trial.trialId,
+          recommendationType: 'score_drop',
+          text: `Compliance for ${trial.trialId} dropped by ${Math.abs(wowChange)}% this week. Review missed visits.`,
+          priorityRank: 1
+        });
+      }
+    }
+
+    // 2. Check for overdue Deferred deviations
+    const overdueDeferred = await HubProtocolDeviation.find({
+      siteId,
+      status: 'Deferred',
+      followUpDate: { $lt: new Date() }
+    });
+
+    for (const dev of overdueDeferred) {
+      await HubComplianceRecommendation.create({
+        siteId,
+        trialId: dev.trialId,
+        patientId: dev.subjectId,
+        recommendationType: 'repeated_deviation', // Or create a new type if needed, using repeated for now
+        text: `Deferred deviation for ${dev.subjectId} is past its follow-up date. Immediate resolution required.`,
+        priorityRank: 2
+      });
+    }
+
+    // Audit Log for Assessment
+    await HubAuditLog.create({
+      userId: userId || 'USER-SC-001',
+      actionType: 'COMPLIANCE_ASSESSMENT',
+      entityId: 'SITE-WIDE',
+      details: { timestamp: new Date() }
+    });
+
+    const updatedScores = await HubComplianceScore.find({ siteId });
+    const updatedRecs = await HubComplianceRecommendation.find({ siteId }).sort({ priorityRank: 1 });
+
+    res.json({
+      scores: updatedScores,
+      recommendations: updatedRecs
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -4,7 +4,11 @@ const Agent = require('../models/Agent');
 const hubController = require('../controllers/hubController');
 
 router.get('/health', (req, res) => {
-  res.json({ status: 'Trial Copilot Hub API is running' });
+  res.json({ 
+    status: 'Trial Copilot Hub API is running',
+    version: '1.0.1',
+    timestamp: '2026-05-04T13:54:00'
+  });
 });
 
 router.get('/health-snapshot', hubController.getHealthSnapshot);

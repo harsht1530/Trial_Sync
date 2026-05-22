@@ -30,10 +30,10 @@ export function TrialOverview() {
             <h3 className="text-base sm:text-lg font-semibold">Active Trials</h3>
             <p className="text-xs sm:text-sm text-muted-foreground">Clinical trial progress</p>
           </div>
-          <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm">
+          {/* <Button variant="outline" size="sm" className="h-8 sm:h-9 text-xs sm:text-sm">
             All Trials
             <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-1" />
-          </Button>
+          </Button> */}
         </div>
       </div>
 

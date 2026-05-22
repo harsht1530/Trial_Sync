@@ -69,7 +69,7 @@ export const PatientProfile = ({ patient }: PatientProfileProps) => {
 
           <div className="flex-1 pb-2">
             <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-              <CardTitle className="text-2xl">{patient.name}</CardTitle>
+              <CardTitle className="text-2xl">{patient.id}</CardTitle>
               <Badge className={getStatusColor(patient.status)}>
                 {patient.status}
               </Badge>
@@ -78,7 +78,7 @@ export const PatientProfile = ({ patient }: PatientProfileProps) => {
               </Badge>
             </div>
             <p className="text-muted-foreground mt-1">
-              Subject ID: {patient.id} • {patient.age} years old • {patient.gender}
+              {patient.age} years old • {patient.gender}
             </p>
           </div>
 
@@ -96,30 +96,10 @@ export const PatientProfile = ({ patient }: PatientProfileProps) => {
       </CardHeader>
 
       <CardContent className="pt-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Contact Information */}
-          <div className="space-y-4">
-            <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
-              Contact Information
-            </h4>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 text-sm">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                <span>{patient.email || "No email provided"}</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>{patient.phone || "No phone provided"}</span>
-              </div>
-              <div className="flex items-start gap-3 text-sm">
-                <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                <span>{patient.address || "No address provided"}</span>
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border">
 
           {/* Trial Information */}
-          <div className="space-y-4">
+          <div className="space-y-4 pb-6 md:pb-0 md:pr-8">
             <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
               Trial Information
             </h4>
@@ -140,7 +120,7 @@ export const PatientProfile = ({ patient }: PatientProfileProps) => {
           </div>
 
           {/* Emergency Contact */}
-          <div className="space-y-4">
+          <div className="space-y-4 pt-6 md:pt-0 md:pl-8">
             <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
               <AlertCircle className="h-4 w-4" />
               Emergency Contact

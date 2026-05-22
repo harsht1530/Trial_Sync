@@ -125,17 +125,17 @@ export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) 
       });
 
       const data = await response.json();
-      
+
       const botMessage: Message = {
         id: data._id,
         role: "assistant",
         content: data.content,
         timestamp: new Date(data.timestamp),
-        type: data.metadata?.clinicalExtraction?.isAdverseEvent ? "alert" : 
-              data.metadata?.clinicalExtraction?.symptom ? "symptom-check" : "text",
+        type: data.metadata?.clinicalExtraction?.isAdverseEvent ? "alert" :
+          data.metadata?.clinicalExtraction?.symptom ? "symptom-check" : "text",
         metadata: data.metadata?.clinicalExtraction ? {
-          severity: data.metadata.clinicalExtraction.severity >= 7 ? "high" : 
-                    data.metadata.clinicalExtraction.severity >= 4 ? "medium" : "low"
+          severity: data.metadata.clinicalExtraction.severity >= 7 ? "high" :
+            data.metadata.clinicalExtraction.severity >= 4 ? "medium" : "low"
         } : undefined
       };
 
@@ -232,9 +232,8 @@ export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) 
                 Online
               </Badge>
             </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              For {patientName} • Subject ID: {patientId}
-            </p>
+            <p className="text-[10px] text-muted-foreground font-medium">Principal Investigator · Online</p>
+
           </div>
         </div>
         <div className="flex items-center gap-2">

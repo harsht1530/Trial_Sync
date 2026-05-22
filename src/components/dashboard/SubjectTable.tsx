@@ -49,7 +49,7 @@ export function SubjectTable() {
           <h3 className="text-lg font-semibold">Active Subjects</h3>
           <p className="text-sm text-muted-foreground">Monitor subject status and compliance</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => navigate('/subjects')}>
+        <Button variant="outline" size="sm" onClick={() => navigate('/subject?status=active')}>
           View All
         </Button>
       </div>

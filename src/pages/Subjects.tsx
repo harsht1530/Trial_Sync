@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -66,9 +66,10 @@ export default function Patients() {
     totalCount: 0
   });
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchParams] = useSearchParams();
   const [selectedTrial, setSelectedTrial] = useState<string>("all");
   const [selectedSite, setSelectedSite] = useState<string>("all");
-  const [selectedStatuses, setSelectedStatuses] = useState<string>("all");
+  const [selectedStatuses, setSelectedStatuses] = useState<string>(searchParams.get('status') || "all");
   const [selectedRiskLevels, setSelectedRiskLevels] = useState<string>("all");
   const [escalateSubjectId, setEscalateSubjectId] = useState<string | null>(null);
 

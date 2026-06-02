@@ -4,7 +4,7 @@ const { piConn } = require('../../config/db');
 const schema = new mongoose.Schema({
   id: { type: String, required: true },
   validationId: String,
-  action: { type: String, enum: ['Correction Applied', 'Approved', 'Rejected', 'Assigned for Review'] },
+  action: { type: String },
   performedBy: String,
   timestamp: String,
   oldValue: String,

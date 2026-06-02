@@ -1,25 +1,19 @@
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-const MONGO_URI = process.env.MONGODB_URI;
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/CLINIK';
+const DB_NAME = 'CLINIK';
 
-// Options for connections
-const options = {
-  // Add any specific mongoose options here
-};
+mongoose.connect(MONGO_URI, { dbName: DB_NAME })
+  .then(() => console.log(`Connected to Master Database: ${DB_NAME}`))
+  .catch(err => console.error('Master database connection error:', err));
 
-// Create connections for each module
-const piConn = mongoose.createConnection(MONGO_URI, { ...options, dbName: process.env.DB_NAME_PI });
-const spConn = mongoose.createConnection(MONGO_URI, { ...options, dbName: process.env.DB_NAME_SP });
-const hubConn = mongoose.createConnection(MONGO_URI, { ...options, dbName: process.env.DB_NAME_TCH });
-
-// Log connection status
-piConn.on('connected', () => console.log(`Connected to PI Database: ${process.env.DB_NAME_PI}`));
-spConn.on('connected', () => console.log(`Connected to Subject Panel Database: ${process.env.DB_NAME_SP}`));
-hubConn.on('connected', () => console.log(`Connected to Hub Database: ${process.env.DB_NAME_TCH}`));
+const conn = mongoose.connection;
 
 module.exports = {
-  piConn,
-  spConn,
-  hubConn
+  piConn: conn,
+  spConn: conn,
+  hubConn: conn,
+  connection: conn
 };
+

@@ -12,6 +12,7 @@ import { Communications } from "./pages/Communications";
 import { SymptomTracker } from "./pages/SymptomTracker";
 import { Analytics } from "./pages/Analytics";
 import NotFound from "./pages/NotFound";
+import { GlobalFloatingChatbot } from "@/components/layout/GlobalFloatingChatbot";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </HashRouter>
+      <GlobalFloatingChatbot />
     </TooltipProvider>
   </QueryClientProvider>
 );

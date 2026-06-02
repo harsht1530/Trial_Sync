@@ -67,7 +67,7 @@ exports.getSubjects = async (req, res) => {
     let query = {};
     
     if (status && status !== 'all' && status !== 'ai-flagged') {
-      query.status = status;
+      query.status = new RegExp(`^${status.trim()}$`, 'i');
     }
     
     if (aiFlagged === 'true' || status === 'ai-flagged') {
@@ -131,23 +131,61 @@ exports.addSubject = async (req, res) => {
       return res.status(400).json({ message: 'Invalid or inactive Trial ID' });
     }
 
-    const existing = await HubSubject.findOne({ subjectId, trialId });
+    // Check by patient_id
+    const existing = await HubSubject.findOne({ patient_id: subjectId, trial: trialId });
     if (existing) {
       return res.status(409).json({ message: 'Subject already exists within this trial' });
     }
 
+    // Map status from screening/consented/etc to master enums (Active, Inactive, Completed, Withdrawn, Screen Failure)
+    let masterStatus = 'Active';
+    if (status === 'discontinued') masterStatus = 'Withdrawn';
+    else if (status === 'inactive') masterStatus = 'Inactive';
+
+    // Map phase (Screening, Treatment, Follow-up)
+    let masterPhase = 'Screening';
+    if (trial.phase && trial.phase.toLowerCase().includes('treatment')) masterPhase = 'Treatment';
+    else if (trial.phase && trial.phase.toLowerCase().includes('follow')) masterPhase = 'Follow-up';
+
     const newSubject = await HubSubject.create({
-      subjectId,
-      trialId,
-      siteId,
-      dob,
-      sex,
-      status: status || 'screening',
-      phone,
-      inclusionCriteriaReviewed,
-      phase: trial.phase,
-      flags: [],
-      riskScore: 0
+      patient_id: subjectId,
+      subject_name: `Subject ${subjectId}`,
+      trial: trialId,
+      site: siteId,
+      status: masterStatus,
+      risk: 'Low',
+      phase: masterPhase,
+      contact: {
+        phone: phone || '',
+        email: ''
+      },
+      wearable_data: {
+        device: {
+          device_id: `DEV-${subjectId}`,
+          name: 'ClinikBand v3',
+          battery_percentage: 100,
+          connection_status: 'Connected',
+          last_sync: new Date().toISOString()
+        },
+        health_summary: {
+          heart_rate: { value: 75, unit: 'BPM', change_percentage: '0%' },
+          steps: { value: 0, unit: 'steps', change_percentage: '0%' },
+          sleep: { value: 8.0, unit: 'hrs', change_percentage: '0%' },
+          calories: { value: 0, unit: 'kcal', change_percentage: '0%' }
+        },
+        daily_step_goal: {
+          completed_steps: 0,
+          goal_steps: 10000,
+          progress_percentage: 0
+        },
+        recent_readings: [],
+        updated_at: new Date().toISOString()
+      },
+      audit: {
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        created_by: 'USER-SC-001'
+      }
     });
 
     res.status(201).json(newSubject);
@@ -306,22 +344,49 @@ exports.getSafetySummary = async (req, res) => {
   try {
     const siteId = 'SITE-NY-001'; 
     
-    // Total Active AEs: NOT Resolved
-    const activeCount = await HubAE.countDocuments({ siteId, status: { $ne: 'Resolved' } });
-    console.log('Active Count for site:', activeCount);
+    // Find all subjects at this site
+    const subjects = await HubSubject.find({ site: siteId });
     
-    // AI Flagged: ai_flagged = true AND status NOT Resolved
-    const aiFlaggedCount = await HubAE.countDocuments({ siteId, ai_flagged: true, status: { $ne: 'Resolved' } });
+    let activeCount = 0;
+    let aiFlaggedCount = 0;
+    let resolvedInWindow = [];
+    let saesThisMonth = 0;
     
-    // Avg Resolution Time: resolved in last 90 days. arithmetic mean of (resolution_date - onset_date)
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
     
-    const resolvedInWindow = await HubAE.find({
-      siteId,
-      status: 'Resolved',
-      resolution_date: { $gte: ninetyDaysAgo }
-    });
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    
+    for (const sub of subjects) {
+      for (const ae of sub.adverse_events || []) {
+        // Status checks
+        if (ae.status !== 'Resolved') {
+          activeCount++;
+          if (ae.ai_flagged) {
+            aiFlaggedCount++;
+          }
+        }
+        
+        if (ae.status === 'Resolved' && ae.resolution_date) {
+          const resDate = new Date(ae.resolution_date);
+          if (resDate >= ninetyDaysAgo) {
+            resolvedInWindow.push({
+              resolution_date: resDate,
+              onset_date: ae.onset_date ? new Date(ae.onset_date) : resDate
+            });
+          }
+        }
+        
+        if (ae.is_sae && ae.sponsor_report_date) {
+          const repDate = new Date(ae.sponsor_report_date);
+          if (repDate >= startOfMonth) {
+            saesThisMonth++;
+          }
+        }
+      }
+    }
     
     let avgResolutionDays = null;
     if (resolvedInWindow.length > 0) {
@@ -331,17 +396,6 @@ exports.getSafetySummary = async (req, res) => {
       }, 0);
       avgResolutionDays = Math.round(totalDays / resolvedInWindow.length);
     }
-    
-    // SAEs This Month: is_sae = true AND sponsor_report_date within current calendar month
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-    
-    const saesThisMonth = await HubAE.countDocuments({
-      siteId,
-      is_sae: true,
-      sponsor_report_date: { $gte: startOfMonth }
-    });
     
     res.json({
       total_active_aes: activeCount,
@@ -377,21 +431,59 @@ exports.getAEList = async (req, res) => {
     const siteId = 'SITE-NY-001';
     const { status, severity, ai_flagged, trial_id, sort_by } = req.query;
     
-    let query = { siteId };
-    if (status) query.status = status;
-    if (severity) query.severityLabel = severity;
-    if (ai_flagged) query.ai_flagged = ai_flagged === 'true';
-    if (trial_id) query.trialId = trial_id;
+    const subjects = await HubSubject.find({ site: siteId });
+    let aes = [];
+    let totalCount = 0;
+    let flaggedCount = 0;
     
-    let sort = { onset_date: -1 };
-    if (sort_by === 'severity_grade') sort = { severityGrade: -1 };
-    else if (sort_by === 'status') sort = { status: 1 };
+    for (const sub of subjects) {
+      for (const ae of sub.adverse_events || []) {
+        totalCount++;
+        if (ae.ai_flagged) {
+          flaggedCount++;
+        }
+        
+        // Build AE object in format expected by frontend
+        const aeObj = {
+          _id: ae.ae_id,
+          id: ae.ae_id,
+          patientId: sub.patient_id,
+          trialId: sub.trial,
+          siteId: sub.site,
+          aeType: ae.aeType || ae.field || 'Adverse Event',
+          severityGrade: ae.severityGrade || (ae.severity === 'Critical' ? 4 : ae.severity === 'Warning' ? 3 : 2),
+          severityLabel: ae.severityLabel || ae.severity || 'Moderate',
+          onset_date: ae.onset_date || ae.flagged_at || new Date().toISOString(),
+          awareness_date: ae.awareness_date || ae.flagged_at || new Date().toISOString(),
+          status: ae.status || 'Active',
+          is_sae: ae.is_sae || false,
+          ai_flagged: ae.ai_flagged || false,
+          late_report: ae.late_report || false,
+          days_to_report: ae.days_to_report,
+          resolution_date: ae.resolution_date,
+          sponsor_report_date: ae.sponsor_report_date,
+          description: ae.description
+        };
+        
+        // Apply filters
+        if (status && aeObj.status !== status) continue;
+        if (severity && aeObj.severityLabel !== severity) continue;
+        if (ai_flagged && aeObj.ai_flagged !== (ai_flagged === 'true')) continue;
+        if (trial_id && aeObj.trialId !== trial_id) continue;
+        
+        aes.push(aeObj);
+      }
+    }
     
-    const aes = await HubAE.find(query).sort(sort);
-    
-    // Page-level counts for header
-    const totalCount = await HubAE.countDocuments({ siteId });
-    const flaggedCount = await HubAE.countDocuments({ siteId, ai_flagged: true });
+    // Sort
+    if (sort_by === 'severity_grade') {
+      aes.sort((a, b) => b.severityGrade - a.severityGrade);
+    } else if (sort_by === 'status') {
+      aes.sort((a, b) => a.status.localeCompare(b.status));
+    } else {
+      // Default: onset_date descending
+      aes.sort((a, b) => new Date(b.onset_date) - new Date(a.onset_date));
+    }
     
     res.json({
       aes,
@@ -414,17 +506,29 @@ exports.reportAE = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    // Find the subject in Clinical_Trial_Subject_Master
+    const subject = await HubSubject.findOne({ patient_id: patientId });
+    if (!subject) {
+      return res.status(404).json({ error: 'Subject not found' });
+    }
+
     // Severity mapping
     const severityMap = { 1: 'Mild', 2: 'Moderate', 3: 'Severe', 4: 'Life-Threatening', 5: 'Fatal' };
     const severityLabel = severityMap[severityGrade] || 'Unknown';
     
+    // Map severityGrade/severityLabel to general severity ('Critical' / 'Warning' / 'Mild' / 'Moderate' / 'Severe')
+    let generalSeverity = 'Moderate';
+    if (severityGrade >= 4) generalSeverity = 'Critical';
+    else if (severityGrade === 3) generalSeverity = 'Severe';
+    else if (severityGrade === 2) generalSeverity = 'Warning';
+    else if (severityGrade === 1) generalSeverity = 'Mild';
+
     const reportDate = new Date();
     const awarenessDateObj = new Date(awareness_date);
     const onsetDateObj = new Date(onset_date);
     
     const daysToReport = Math.ceil((reportDate - awarenessDateObj) / (1000 * 60 * 60 * 24));
     
-    // ICH E2A Compliance: SAE within 24h, non-SAE within 7 days
     let lateReport = false;
     let autoSAE = is_sae === true;
     
@@ -435,31 +539,51 @@ exports.reportAE = async (req, res) => {
     if (autoSAE && daysToReport > 1) lateReport = true;
     if (!autoSAE && daysToReport > 7) lateReport = true;
     
-    const newAE = await HubAE.create({
-      patientId,
-      trialId,
-      siteId,
+    const ae_id = `AE-${Date.now()}`;
+    const ae_status = initialStatus || 'Active';
+    
+    const newAE = {
+      ae_id,
+      severity: generalSeverity,
+      description: `${aeType} reported by Site Incharge.`,
+      data_type: 'Safety & Adverse Events',
+      field: aeType,
+      status: ae_status,
+      flagged_at: onsetDateObj.toISOString(),
+      
+      // HubAE properties
       aeType,
       severityGrade,
       severityLabel,
-      onset_date: onsetDateObj,
-      awareness_date: awarenessDateObj,
-      status: initialStatus || 'Active',
+      onset_date: onsetDateObj.toISOString(),
+      resolution_date: null,
+      awareness_date: awarenessDateObj.toISOString(),
+      sponsor_report_date: autoSAE ? reportDate.toISOString() : null,
       is_sae: autoSAE,
       days_to_report: daysToReport,
       late_report: lateReport,
       ai_flagged: false
-    });
+    };
+    
+    subject.adverse_events.push(newAE);
+    await subject.save();
     
     // Audit Logging
     await HubAuditLog.create({
       userId: 'USER-SC-001',
       actionType: 'REPORT_AE',
-      entityId: newAE._id.toString(),
+      entityId: ae_id,
       details: { aeType, patientId, trialId }
     });
     
-    res.status(201).json(newAE);
+    res.status(201).json({
+      _id: ae_id,
+      id: ae_id,
+      patientId,
+      trialId,
+      siteId,
+      ...newAE
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -471,6 +595,22 @@ exports.escalateToPI = async (req, res) => {
     
     if (!aeIds && !anomalyId) {
       return res.status(400).json({ error: 'Provide AE IDs or Anomaly ID' });
+    }
+    
+    // Update statuses in Clinical_Trial_Subject_Master
+    if (aeIds && aeIds.length > 0) {
+      for (const aeId of aeIds) {
+        const subject = await HubSubject.findOne({ "adverse_events.ae_id": aeId });
+        if (subject) {
+          const ae = subject.adverse_events.find(a => a.ae_id === aeId);
+          if (ae) {
+            ae.status = 'Escalated';
+            // Set sponsor report date to now if escalated
+            ae.sponsor_report_date = new Date().toISOString();
+            await subject.save();
+          }
+        }
+      }
     }
     
     const escalation = await HubEscalation.create({

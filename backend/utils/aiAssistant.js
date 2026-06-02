@@ -1,5 +1,5 @@
 const OLLAMA_URL = 'https://ollama.com/api/chat';
-const OLLAMA_AUTH_TOKEN = '7b92c59dfbfc4ff792c4228dbf4a5ba3.83xnmae6F2JDFIZd19__F8J2';
+const OLLAMA_AUTH_TOKEN = 'd5cb3592658043ffa0e932f8db9d4963.JMvKc0TanskljiLxjOA9Rl1E';
 const OLLAMA_COOKIE = 'aid=ba14a101-09b7-4628-8369-ce2808cbc8b7';
 const OLLAMA_MODEL = 'deepseek-v3.1:671b-cloud';
 

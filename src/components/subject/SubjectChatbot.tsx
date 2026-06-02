@@ -4,7 +4,6 @@ import { API_BASE_URL } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Bot,
   Send,
@@ -44,6 +43,7 @@ interface Message {
 interface PatientChatbotProps {
   patientId: string;
   patientName: string;
+  className?: string;
 }
 
 // History will be fetched from the backend
@@ -55,7 +55,7 @@ const quickResponses = [
   { label: "Emergency", icon: AlertCircle, message: "I'm experiencing a serious issue" }
 ];
 
-export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) => {
+export const PatientChatbot = ({ patientId, patientName, className }: PatientChatbotProps) => {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -126,6 +126,10 @@ export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) 
 
       const data = await response.json();
 
+      if (!response.ok || data.error) {
+        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+      }
+
       const botMessage: Message = {
         id: data._id,
         role: "assistant",
@@ -140,11 +144,11 @@ export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) 
       };
 
       setMessages(prev => [...prev, botMessage]);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       toast({
         title: "Assistant Offline",
-        description: "Could not connect to the AI service.",
+        description: err?.message || "Could not connect to the AI service.",
         variant: "destructive"
       });
     } finally {
@@ -213,8 +217,9 @@ export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) 
 
   return (
     <Card className={cn(
-      "flex flex-col transition-all duration-300",
-      isExpanded ? "fixed inset-4 z-50" : "h-[600px]"
+      "flex flex-col transition-all duration-300 w-full h-full min-h-[500px] lg:min-h-[600px]",
+      isExpanded ? "fixed inset-4 z-50" : "h-full",
+      className
     )}>
       <CardHeader className="flex flex-row items-center justify-between border-b py-4">
         <div className="flex items-center gap-3">
@@ -272,7 +277,7 @@ export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) 
         </div>
       </CardHeader>
 
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto p-4" ref={scrollRef}>
         <div className="space-y-4">
           {messages.map((message) => (
             <div
@@ -350,7 +355,7 @@ export const PatientChatbot = ({ patientId, patientName }: PatientChatbotProps) 
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Quick Responses */}
       <div className="px-4 py-2 border-t flex gap-2 overflow-x-auto">

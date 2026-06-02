@@ -10,6 +10,10 @@ const statusConfig = {
   enrolling: { label: "Enrolling", className: "bg-primary/10 text-primary" },
   active: { label: "Active", className: "bg-success/10 text-success" },
   completed: { label: "Completed", className: "bg-muted text-muted-foreground" },
+  Recruiting: { label: "Recruiting", className: "bg-primary/10 text-primary" },
+  "On-treatment": { label: "On Treatment", className: "bg-success/10 text-success" },
+  Screening: { label: "Screening", className: "bg-warning/10 text-warning" },
+  Closeout: { label: "Closeout", className: "bg-muted text-muted-foreground" }
 };
 
 export function TrialOverview() {
@@ -39,7 +43,10 @@ export function TrialOverview() {
 
       <div className="divide-y divide-border">
         {trials.map((trial) => {
-          const status = statusConfig[trial.status as keyof typeof statusConfig];
+          const status = statusConfig[trial.status as keyof typeof statusConfig] || {
+            label: trial.status || "Unknown",
+            className: "bg-muted text-muted-foreground"
+          };
 
           return (
             <div key={trial.id} className="p-4 sm:p-6 hover:bg-secondary/20 transition-colors">

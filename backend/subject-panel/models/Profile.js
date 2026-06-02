@@ -1,10 +1,5 @@
 const mongoose = require('mongoose');
-const { spConn } = require('../../config/db');
+const Subject = require('../../principle-investigator/models/Subject');
 
-const profileSchema = new mongoose.Schema({
-  subjectId: { type: String, required: true, unique: true },
-  fullName: String,
-  email: String,
-}, { timestamps: true });
+module.exports = mongoose.models.Profile || mongoose.model('Profile', Subject.schema, 'Clinical_Trial_Subject_Master');
 
-module.exports = spConn.model('Profile', profileSchema);

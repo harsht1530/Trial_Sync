@@ -84,6 +84,92 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
     channel: "CALL" as "CALL" | "SMS" | "All channels"
   });
 
+  const [callType, setCallType] = useState("check-in");
+  const [customMessage, setCustomMessage] = useState("");
+
+  const parseTime = (timeStr: string) => {
+    let hours = 0;
+    let minutes = 0;
+
+    timeStr = (timeStr || "").trim();
+    const ampmMatch = timeStr.match(/(AM|PM)/i);
+    if (ampmMatch) {
+      const isPM = ampmMatch[0].toUpperCase() === 'PM';
+      const timePart = timeStr.replace(/(AM|PM)/i, '').trim();
+      const parts = timePart.split(':');
+      hours = parseInt(parts[0], 10) || 0;
+      minutes = parts[1] ? parseInt(parts[1], 10) : 0;
+      if (isPM && hours < 12) hours += 12;
+      if (!isPM && hours === 12) hours = 0;
+    } else {
+      const parts = timeStr.split(':');
+      hours = parseInt(parts[0], 10) || 0;
+      minutes = parts[1] ? parseInt(parts[1], 10) : 0;
+    }
+    return { hours, minutes };
+  };
+
+  const formatTime12Hour = (hours: number, minutes: number): string => {
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    let h12 = hours % 12;
+    if (h12 === 0) h12 = 12;
+    const mStr = String(minutes).padStart(2, '0');
+    const hStr = String(h12).padStart(2, '0');
+    return `${hStr}:${mStr} ${ampm}`;
+  };
+
+  const getNextScheduleDisplay = (reminder: Reminder) => {
+    try {
+      const now = new Date();
+      const { hours, minutes } = parseTime(reminder.scheduledTime || "");
+      const formattedTime = formatTime12Hour(hours, minutes);
+
+      const freq = (reminder.frequency || "").toLowerCase();
+      
+      if (freq === "daily") {
+        const todayTarget = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+        if (todayTarget.getTime() > now.getTime()) {
+          return `Today ${formattedTime}`;
+        } else {
+          return `Tomorrow ${formattedTime}`;
+        }
+      }
+
+      if (freq === "weekly") {
+        return `Next Week ${formattedTime}`;
+      }
+
+      // For other frequencies or one-time, let's parse the nextTrigger date if it exists
+      if (reminder.nextTrigger) {
+        const triggerDate = new Date(reminder.nextTrigger);
+        if (!isNaN(triggerDate.getTime())) {
+          const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const trigDateOnly = new Date(triggerDate.getFullYear(), triggerDate.getMonth(), triggerDate.getDate());
+          const diffTime = trigDateOnly.getTime() - todayDate.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          if (diffDays === 0) {
+            const todayTarget = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+            if (todayTarget.getTime() > now.getTime()) {
+              return `Today ${formattedTime}`;
+            } else {
+              return `Tomorrow ${formattedTime}`;
+            }
+          } else if (diffDays === 1) {
+            return `Tomorrow ${formattedTime}`;
+          } else {
+            return `Next Week ${formattedTime}`;
+          }
+        }
+      }
+
+      return `Tomorrow ${formattedTime}`;
+    } catch (err) {
+      console.error("Error formatting next schedule", err);
+      return reminder.nextTrigger || reminder.scheduledTime;
+    }
+  };
+
   useEffect(() => {
     Promise.all([
       fetch(`${API_BASE_URL}/api/communications/reminders?patientId=${patientId}`).then(r => r.json()),
@@ -118,16 +204,29 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
       .catch(console.error);
   };
 
+  const getCallTypeLabel = (val: string) => {
+    switch (val) {
+      case "check-in": return "Symptom Check-in";
+      case "medication": return "Medication Reminder";
+      case "appointment": return "Appointment Reminder";
+      case "follow-up": return "Follow-up Call";
+      default: return "Symptom Check-in";
+    }
+  };
+
   const initiateCall = () => {
+    const label = getCallTypeLabel(callType);
     fetch(`${API_BASE_URL}/api/communications/calls/now`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ patientId, reminderName: 'Manual Check-in' })
+      body: JSON.stringify({ patientId, reminderName: label, notes: customMessage })
     })
       .then(res => res.json())
       .then(data => {
         setCallLogs(prev => [data.call, ...prev]);
         setIsCallDialogOpen(false);
+        setCallType("check-in");
+        setCustomMessage("");
         toast({
           title: "Call Initiated",
           description: "Automated call is being placed to the patient.",
@@ -260,7 +359,7 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Call Type</Label>
-                  <Select defaultValue="check-in">
+                  <Select value={callType} onValueChange={setCallType}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -275,6 +374,8 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
                 <div className="space-y-2">
                   <Label>Custom Message (Optional)</Label>
                   <Textarea
+                    value={customMessage}
+                    onChange={(e) => setCustomMessage(e.target.value)}
                     placeholder="Enter a custom message for the call..."
                     className="min-h-[80px]"
                   />
@@ -429,7 +530,7 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
                         </div>
                         {reminder.nextTrigger && (
                           <p className="text-xs text-primary mt-1">
-                            Next: {reminder.nextTrigger}
+                            Next: {getNextScheduleDisplay(reminder)}
                           </p>
                         )}
                       </div>
@@ -497,7 +598,17 @@ export const PatientReminders = ({ patientId }: PatientRemindersProps) => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm">{call.timestamp}</p>
+                  <p className="text-sm">
+                    {(() => {
+                      try {
+                        const d = new Date(call.timestamp);
+                        if (!isNaN(d.getTime())) {
+                          return d.toLocaleString();
+                        }
+                      } catch (e) {}
+                      return call.timestamp;
+                    })()}
+                  </p>
                   {call.duration && (
                     <p className="text-sm text-muted-foreground">Duration: {call.duration}</p>
                   )}

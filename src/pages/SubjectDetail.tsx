@@ -11,6 +11,7 @@ import { PatientChatbot } from "@/components/subject/SubjectChatbot";
 import { SymptomLogger } from "@/components/subject/SymptomLogger";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { Footer } from "@/components/layout/Footer";
 
 const PatientDetail = () => {
   const { id } = useParams();
@@ -90,6 +91,7 @@ const PatientDetail = () => {
               </div>
             </div>
           </main>
+          <Footer />
         </div>
       </div>
     </>

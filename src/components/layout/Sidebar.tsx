@@ -9,7 +9,8 @@ import {
   Activity,
   FileText,
   Shield,
-  ClipboardList
+  ClipboardList,
+  LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -34,7 +35,7 @@ const navigation = [
 
 const bottomNav = [
   { id: "settings", name: "Settings", icon: Settings, path: "/" },
-  { id: "compliance", name: "Compliance", icon: Shield, path: "/" },
+  { id: "logout", name: "Logout", icon: LogOut, path: "https://multiplierai.co/agent/Trial_Sync_3/" },
 ];
 
 export function SidebarContent({ activeTab: propActiveTab, onTabChange, className }: SidebarProps) {
@@ -67,11 +68,15 @@ export function SidebarContent({ activeTab: propActiveTab, onTabChange, classNam
   };
 
   const activeTab = propActiveTab || getActiveTabFromPath();
-  const handleNavClick = (item: typeof navigation[0]) => {
+  const handleNavClick = (item: { id: string; name: string; icon: any; path: string }) => {
     if (onTabChange) {
       onTabChange(item.id);
     }
-    navigate(item.path);
+    if (item.path.startsWith("http")) {
+      window.location.href = item.path;
+    } else {
+      navigate(item.path);
+    }
   };
 
   return (

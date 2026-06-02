@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { API_BASE_URL } from "@/lib/api";
+import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -202,10 +203,10 @@ export default function DataValidation() {
       <div className="min-h-screen bg-background">
         <Sidebar />
 
-        <div className="lg:ml-64">
+        <div className="lg:ml-64 flex flex-col min-h-screen">
           <Header />
 
-          <main className="p-4 sm:p-8">
+          <main className="p-4 sm:p-8 flex-1">
             {/* Page Header */}
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-foreground">Data Validation</h1>
@@ -542,6 +543,7 @@ export default function DataValidation() {
               </TabsContent>
             </Tabs>
           </main>
+          <Footer />
         </div>
       </div>
 

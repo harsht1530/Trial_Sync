@@ -36,19 +36,28 @@ import {
 import { cn } from "@/lib/utils";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { Footer } from "@/components/layout/Footer";
 
 
 
 const statusConfig = {
   active: { label: "Active", icon: CheckCircle2, className: "bg-success/10 text-success border-success/20" },
+  Active: { label: "Active", icon: CheckCircle2, className: "bg-success/10 text-success border-success/20" },
   review: { label: "Review", icon: Clock, className: "bg-warning/10 text-warning border-warning/20" },
   alert: { label: "Alert", icon: AlertTriangle, className: "bg-destructive/10 text-destructive border-destructive/20" },
+  Inactive: { label: "Inactive", icon: X, className: "bg-muted text-muted-foreground border-muted/20" },
+  Completed: { label: "Completed", icon: CheckCircle2, className: "bg-success/10 text-success border-success/20" },
+  Withdrawn: { label: "Withdrawn", icon: X, className: "bg-muted text-muted-foreground border-muted/20" },
+  "Screen Failure": { label: "Screen Failure", icon: AlertTriangle, className: "bg-destructive/10 text-destructive border-destructive/20" }
 };
 
 const riskConfig = {
   low: "bg-success/10 text-success",
   medium: "bg-warning/10 text-warning",
   high: "bg-destructive/10 text-destructive",
+  Low: "bg-success/10 text-success",
+  Medium: "bg-warning/10 text-warning",
+  High: "bg-destructive/10 text-destructive",
 };
 
 
@@ -127,10 +136,10 @@ export default function Patients() {
       <div className="min-h-screen bg-background">
         <Sidebar />
 
-        <div className="lg:ml-64">
+        <div className="lg:ml-64 flex flex-col min-h-screen">
           <Header />
 
-          <main className="p-4 sm:p-8">
+          <main className="p-4 sm:p-8 flex-1">
             {/* Page Header */}
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-foreground">Subjects</h1>
@@ -252,7 +261,11 @@ export default function Patients() {
                   </thead>
                   <tbody className="divide-y divide-border">
                     {filteredPatients.map((patient) => {
-                      const status = statusConfig[patient.status as keyof typeof statusConfig];
+                      const status = statusConfig[patient.status as keyof typeof statusConfig] || {
+                        label: patient.status || "Active",
+                        icon: CheckCircle2,
+                        className: "bg-success/10 text-success border-success/20"
+                      };
                       const StatusIcon = status.icon;
 
                       return (
@@ -399,6 +412,7 @@ export default function Patients() {
               )}
             </div>
           </main>
+          <Footer />
         </div>
       </div>
 

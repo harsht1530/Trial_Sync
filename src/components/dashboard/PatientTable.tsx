@@ -29,14 +29,22 @@ import { useNavigate } from "react-router-dom";
 
 const statusConfig = {
   active: { label: "Active", icon: CheckCircle2, className: "bg-success/10 text-success border-success/20" },
+  Active: { label: "Active", icon: CheckCircle2, className: "bg-success/10 text-success border-success/20" },
   review: { label: "Review", icon: Clock, className: "bg-warning/10 text-warning border-warning/20" },
   alert: { label: "Alert", icon: AlertTriangle, className: "bg-destructive/10 text-destructive border-destructive/20" },
+  Inactive: { label: "Inactive", icon: Clock, className: "bg-muted text-muted-foreground border-muted/20" },
+  Completed: { label: "Completed", icon: CheckCircle2, className: "bg-success/10 text-success border-success/20" },
+  Withdrawn: { label: "Withdrawn", icon: Clock, className: "bg-muted text-muted-foreground border-muted/20" },
+  "Screen Failure": { label: "Screen Failure", icon: AlertTriangle, className: "bg-destructive/10 text-destructive border-destructive/20" }
 };
 
 const riskConfig = {
   low: "bg-success/10 text-success",
   medium: "bg-warning/10 text-warning",
   high: "bg-destructive/10 text-destructive",
+  Low: "bg-success/10 text-success",
+  Medium: "bg-warning/10 text-warning",
+  High: "bg-destructive/10 text-destructive",
 };
 
 export function PatientTable() {
@@ -104,7 +112,11 @@ export function PatientTable() {
           </thead>
           <tbody className="divide-y divide-border">
             {patients.map((patient) => {
-              const status = statusConfig[patient.status as keyof typeof statusConfig];
+              const status = statusConfig[patient.status as keyof typeof statusConfig] || {
+                label: patient.status || "Active",
+                icon: CheckCircle2,
+                className: "bg-success/10 text-success border-success/20"
+              };
               const StatusIcon = status.icon;
 
               return (

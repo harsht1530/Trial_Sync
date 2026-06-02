@@ -1,27 +1,65 @@
 const express = require('express');
 const router = express.Router();
-const ValidationFlag = require('../models/ValidationFlag');
 const AuditEntry = require('../models/AuditEntry');
+const Subject = require('../models/Subject');
 
 router.get('/flags', async (req, res) => {
   try {
     const { severity, status } = req.query;
-    let query = {};
-    if (severity && severity !== 'all') query.severity = severity;
-    if (status && status !== 'all') query.status = status;
     
-    const flags = await ValidationFlag.find(query).sort({ createdAt: -1 });
+    // Fetch all subjects and extract their adverse_events
+    const subjects = await Subject.find({});
+    const flags = [];
     
-    const pending = await ValidationFlag.countDocuments({ status: 'pending' });
-    const inReview = await ValidationFlag.countDocuments({ status: 'in_review' });
-    const critical = await ValidationFlag.countDocuments({ severity: 'critical' });
+    for (const sub of subjects) {
+      for (const ae of sub.adverse_events || []) {
+        // Map database severity to frontend severity categories ('critical', 'warning', 'info')
+        let mappedSeverity = 'info';
+        if (ae.severity === 'Critical' || ae.severity === 'Severe') {
+          mappedSeverity = 'critical';
+        } else if (ae.severity === 'Warning' || ae.severity === 'Moderate') {
+          mappedSeverity = 'warning';
+        }
+        
+        flags.push({
+          id: ae.ae_id,
+          patientId: sub.patient_id,
+          patientName: sub.subject_name,
+          dataType: ae.data_type || 'Vitals',
+          field: ae.field || 'Adverse Event',
+          originalValue: ae.description || 'N/A',
+          flaggedValue: ae.description || 'N/A',
+          issue: ae.description || 'N/A',
+          severity: mappedSeverity,
+          status: ae.status ? ae.status.toLowerCase().replace(' ', '_') : 'pending',
+          flaggedAt: ae.flagged_at || new Date().toISOString(),
+          trial: sub.trial
+        });
+      }
+    }
     
-    const total = await ValidationFlag.countDocuments();
-    const resolved = await ValidationFlag.countDocuments({ status: { $in: ['resolved', 'corrected', 'approved'] } });
+    // Filter flags based on query
+    let filteredFlags = flags;
+    if (severity && severity !== 'all') {
+      filteredFlags = filteredFlags.filter(f => f.severity === severity.toLowerCase());
+    }
+    if (status && status !== 'all') {
+      filteredFlags = filteredFlags.filter(f => f.status === status.toLowerCase().replace(' ', '_'));
+    }
+    
+    // Sort by date descending
+    filteredFlags.sort((a, b) => new Date(b.flaggedAt) - new Date(a.flaggedAt));
+    
+    // Calculations for the Validation Stats Summary widgets
+    const pending = flags.filter(f => f.status === 'pending').length;
+    const inReview = flags.filter(f => f.status === 'in_review').length;
+    const critical = flags.filter(f => f.severity === 'critical').length;
+    const total = flags.length;
+    const resolved = flags.filter(f => ['resolved', 'corrected', 'approved'].includes(f.status)).length;
     const resolutionRate = total === 0 ? '0%' : Math.round((resolved / total) * 100) + '%';
     
     res.json({
-      flags,
+      flags: filteredFlags,
       summary: { pending, inReview, critical, resolutionRate }
     });
   } catch (err) {
@@ -34,19 +72,40 @@ router.post('/flags/:id/resolve', async (req, res) => {
   try {
     const { correctionValue, correctionNotes } = req.body;
     
-    // Fetch original to track oldValue
-    const existing = await ValidationFlag.findOne({ id: req.params.id });
-
-    const flag = await ValidationFlag.findOneAndUpdate(
-      { id: req.params.id },
-      { 
-        status: 'resolved',
-        flaggedValue: correctionValue,
-        issue: correctionNotes ? `Note: ${correctionNotes}` : undefined
-      },
-      { new: true }
-    );
-    if (!flag) return res.status(404).json({ error: 'Flag not found' });
+    const subject = await Subject.findOne({ "adverse_events.ae_id": req.params.id });
+    if (!subject) return res.status(404).json({ error: 'Flag/Adverse event not found' });
+    
+    const ae = subject.adverse_events.find(a => a.ae_id === req.params.id);
+    if (!ae) return res.status(404).json({ error: 'Flag/Adverse event not found' });
+    
+    const originalValue = ae.description;
+    
+    // Update the adverse event in Subject collection
+    ae.status = 'Resolved';
+    ae.description = correctionNotes ? `${correctionValue} (Notes: ${correctionNotes})` : correctionValue;
+    await subject.save();
+    
+    let mappedSeverity = 'info';
+    if (ae.severity === 'Critical' || ae.severity === 'Severe') {
+      mappedSeverity = 'critical';
+    } else if (ae.severity === 'Warning' || ae.severity === 'Moderate') {
+      mappedSeverity = 'warning';
+    }
+    
+    const flag = {
+      id: ae.ae_id,
+      patientId: subject.patient_id,
+      patientName: subject.subject_name,
+      dataType: ae.data_type || 'Vitals',
+      field: ae.field || 'Adverse Event',
+      originalValue: originalValue,
+      flaggedValue: correctionValue,
+      issue: ae.description,
+      severity: mappedSeverity,
+      status: 'resolved',
+      flaggedAt: ae.flagged_at || new Date().toISOString(),
+      trial: subject.trial
+    };
     
     // Drop immutable audit log
     await AuditEntry.create({
@@ -55,7 +114,7 @@ router.post('/flags/:id/resolve', async (req, res) => {
       action: 'Correction Applied',
       performedBy: 'PI-001 Logged User',
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
-      oldValue: existing ? existing.originalValue : 'N/A',
+      oldValue: originalValue,
       newValue: correctionValue || 'N/A',
       notes: correctionNotes || 'Value corrected'
     });
@@ -81,12 +140,39 @@ router.post('/flags/:id/status', async (req, res) => {
       default: return res.status(400).json({ error: 'Invalid action' });
     }
 
-    const flag = await ValidationFlag.findOneAndUpdate(
-      { id: req.params.id },
-      { status: newStatus },
-      { new: true }
-    );
-    if (!flag) return res.status(404).json({ error: 'Flag not found' });
+    const subject = await Subject.findOne({ "adverse_events.ae_id": req.params.id });
+    if (!subject) return res.status(404).json({ error: 'Flag/Adverse event not found' });
+    
+    const ae = subject.adverse_events.find(a => a.ae_id === req.params.id);
+    if (!ae) return res.status(404).json({ error: 'Flag/Adverse event not found' });
+    
+    // Map newStatus to a cased string in DB (e.g. 'in_review' -> 'In Review')
+    const capitalizedStatus = newStatus.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    
+    ae.status = capitalizedStatus;
+    await subject.save();
+    
+    let mappedSeverity = 'info';
+    if (ae.severity === 'Critical' || ae.severity === 'Severe') {
+      mappedSeverity = 'critical';
+    } else if (ae.severity === 'Warning' || ae.severity === 'Moderate') {
+      mappedSeverity = 'warning';
+    }
+    
+    const flag = {
+      id: ae.ae_id,
+      patientId: subject.patient_id,
+      patientName: subject.subject_name,
+      dataType: ae.data_type || 'Vitals',
+      field: ae.field || 'Adverse Event',
+      originalValue: ae.description || 'N/A',
+      flaggedValue: ae.description || 'N/A',
+      issue: ae.description || 'N/A',
+      severity: mappedSeverity,
+      status: newStatus,
+      flaggedAt: ae.flagged_at || new Date().toISOString(),
+      trial: subject.trial
+    };
 
     // Drop immutable audit log
     await AuditEntry.create({

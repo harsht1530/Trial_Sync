@@ -5,6 +5,7 @@ import { PatientProfile as PatientProfileComponent } from "@/components/subject/
 import { MedicalHistory } from "@/components/subject/MedicalHistory";
 import { PatientReminders } from "@/components/subject/SubjectReminders";
 import { WearableData } from "@/components/subject/WearableData";
+import { Footer } from "@/components/layout/Footer";
 
 import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -58,7 +59,7 @@ export function PatientProfile() {
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar />
-      <div className="flex flex-col flex-1 lg:pl-64">
+      <div className="flex flex-col flex-1 lg:pl-64 min-h-screen">
         <Header />
         <main className="flex-1 p-4 sm:p-6 bg-background">
           <div className="space-y-6">
@@ -74,6 +75,7 @@ export function PatientProfile() {
             </div>
           </div>
         </main>
+        <Footer />
       </div>
     </div>
   );

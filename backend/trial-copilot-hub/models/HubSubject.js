@@ -1,30 +1,25 @@
 const mongoose = require('mongoose');
-const { hubConn } = require('../../config/db');
+const Subject = require('../../principle-investigator/models/Subject');
 
-const hubSubjectSchema = new mongoose.Schema({
-  subjectId: { type: String, required: true },
-  trialId: { type: String, required: true },
-  siteId: { type: String, required: true },
-  status: { 
-    type: String, 
-    enum: ['screening', 'consented', 'on-treatment', 'discontinued'], 
-    default: 'screening' 
-  },
-  phase: { type: String, required: true },
-  lastVisit: { type: Date },
-  nextVisit: { type: Date },
-  flags: { 
-    type: [String], 
-    default: [] 
-  },
-  riskScore: { type: Number, default: 0 },
-  gender: { type: String }, // keeping for compatibility if needed
-  sex: { type: String },
-  dob: { type: Date },
-  phone: { type: String },
-  inclusionCriteriaReviewed: { type: Boolean, default: false },
-  age: { type: Number },
-  enrollmentDate: { type: Date, default: Date.now }
-}, { timestamps: true });
+// Define virtuals for fields HubSubject expects that are named differently
+Subject.schema.virtual('subjectId').get(function() {
+  return this.patient_id;
+});
+Subject.schema.virtual('trialId').get(function() {
+  return this.trial;
+});
+Subject.schema.virtual('riskScore').get(function() {
+  if (this.risk === 'High') return 85;
+  if (this.risk === 'Medium') return 50;
+  return 15;
+});
+Subject.schema.virtual('flags').get(function() {
+  const list = [];
+  if (this.adverse_events && this.adverse_events.some(ae => ae.status === 'Pending' || ae.status === 'Escalated')) {
+    list.push('pending_ae');
+  }
+  return list;
+});
 
-module.exports = hubConn.model('HubSubject', hubSubjectSchema);
+module.exports = mongoose.models.HubSubject || mongoose.model('HubSubject', Subject.schema, 'Clinical_Trial_Subject_Master');
+

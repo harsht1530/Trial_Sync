@@ -1,52 +1,65 @@
-const OLLAMA_URL = 'https://ollama.com/api/chat';
-const OLLAMA_AUTH_TOKEN = 'd5cb3592658043ffa0e932f8db9d4963.JMvKc0TanskljiLxjOA9Rl1E';
-const OLLAMA_COOKIE = 'aid=ba14a101-09b7-4628-8369-ce2808cbc8b7';
-const OLLAMA_MODEL = 'deepseek-v3.1:671b-cloud';
+const OpenAI = require('openai');
+
+// Initialize the OpenAI-compatible client pointing to the Multiplier AI agent
+const client = new OpenAI({
+  apiKey: process.env.AI_AGENT_API_KEY,
+  baseURL: process.env.AI_AGENT_BASE_URL,
+});
+
+const MODEL = process.env.AI_AGENT_MODEL || 'gpt-oss:20b';
 
 /**
- * Calls the project-specific Ollama instance with clinical context.
+ * Calls the Multiplier AI agent with clinical context messages.
+ * Messages format: [{ role: 'system'|'user'|'assistant', content: '...' }]
  */
 async function callOllama(messages) {
   try {
-    const response = await fetch(OLLAMA_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OLLAMA_AUTH_TOKEN}`,
-        'Cookie': OLLAMA_COOKIE,
-      },
-      body: JSON.stringify({
-        model: OLLAMA_MODEL,
-        messages: messages,
-        stream: false
-      })
+    // The agent uses the OpenAI Responses API format
+    const inputMessages = messages.map(m => ({
+      role: m.role === 'system' ? 'user' : m.role, // fold system into first user if needed
+      content: m.content
+    }));
+
+    // Prepend any system message as part of the input instructions
+    const systemMsg = messages.find(m => m.role === 'system');
+    const conversationMessages = messages
+      .filter(m => m.role !== 'system')
+      .map(m => ({ role: m.role, content: m.content }));
+
+    // Build input array: if system prompt exists, inject it as a leading user context block
+    const input = systemMsg
+      ? [
+          { role: 'user', content: `[System Instructions]\n${systemMsg.content}` },
+          { role: 'assistant', content: 'Understood. I will follow these instructions.' },
+          ...conversationMessages
+        ]
+      : conversationMessages;
+
+    const response = await client.responses.create({
+      model: MODEL,
+      input
     });
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Ollama API error (${response.status}): ${errorText}`);
-    }
-
-    const data = await response.json();
-    return data.message.content;
+    return response.output_text;
   } catch (err) {
-    console.error('Ollama Utility Error:', err);
+    console.error('Multiplier AI Agent Error:', err?.message || err);
     throw err;
   }
 }
 
 /**
- * System Prompt for the AI Health Assistant
+ * System Prompt for the AI Health Assistant (PI-facing chatbot)
  */
 function getSystemPrompt(patientName) {
-  return `You are the AI Health Assistant for a clinical trial.
+  return `You are the AI Health Assistant for a clinical trial platform called TrialSync.
 Current Patient: ${patientName}
 
 Your goals:
-1. Introduce yourself warmly: "Hello ${patientName}! I'm your AI Health Assistant for the clinical trial."
-2. Help with medication reminders, symptom tracking, and trial questions.
-3. If the patient reports a symptom, you MUST extract the symptom name and severity (1-10).
+1. Introduce yourself warmly as the AI Health Assistant for the clinical trial.
+2. Help the Principal Investigator and care team with medication reminders, symptom tracking, and trial questions.
+3. If the patient reports a symptom, extract the symptom name and severity (1-10).
 4. Be professional, empathetic, and GCP-compliant.
+5. Keep responses concise and actionable.
 
 CRITICAL: At the end of every response, if you detected a symptom, append a JSON block on a NEW LINE starting with "METADATA:" followed by a JSON object like:
 {"symptom": "headache", "severity": 4, "isAdverseEvent": false}

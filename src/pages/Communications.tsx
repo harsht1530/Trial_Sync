@@ -11,9 +11,9 @@ export function Communications() {
       <div className="flex flex-col flex-1 lg:pl-64 min-h-screen">
         <Header />
         <main className="flex-1 p-4 sm:p-6 bg-background">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             <PatientReminders patientId="PT-001" />
-            <PatientChatbot patientId="PT-001" patientName="John Martinez" />
+            <PatientChatbot patientId="PT-001" patientName="John Martinez" className="h-[600px] lg:h-[calc(100vh-240px)] min-h-[500px] lg:min-h-[600px]" />
           </div>
         </main>
         <Footer />

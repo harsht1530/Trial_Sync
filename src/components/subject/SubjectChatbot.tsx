@@ -217,8 +217,8 @@ export const PatientChatbot = ({ patientId, patientName, className }: PatientCha
 
   return (
     <Card className={cn(
-      "flex flex-col transition-all duration-300 w-full h-full min-h-[500px] lg:min-h-[600px]",
-      isExpanded ? "fixed inset-4 z-50" : "h-full",
+      "flex flex-col transition-all duration-300 w-full h-full",
+      isExpanded ? "fixed inset-4 z-50 h-[calc(100vh-32px)] min-h-0 lg:min-h-0" : "",
       className
     )}>
       <CardHeader className="flex flex-row items-center justify-between border-b py-4">

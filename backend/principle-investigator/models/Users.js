@@ -26,9 +26,11 @@ const callHistorySchema = new mongoose.Schema({
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  phone: { type: String, required: true },
+  phone: { type: String, default: "" },
   email: { type: String, required: true, unique: true },
-  role: { type: String, enum: ['Site Incharge', 'Principal Investigator'], required: true },
+  password: { type: String }, // Hashed password for email/password authentication
+  googleId: { type: String }, // Google unique user ID for OAuth
+  role: { type: String, enum: ['Site Incharge', 'Principal Investigator', 'Subject', 'Site Coordinator'], default: 'Principal Investigator' },
   scheduled_reminders: { type: [reminderSchema], default: [] },
   recent_call_history: { type: [callHistorySchema], default: [] },
   conversationsHistory: { type: mongoose.Schema.Types.Mixed, default: {} }

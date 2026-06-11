@@ -82,12 +82,12 @@ const PatientDetail = () => {
               <SymptomLogger patientId={patient.id} />
 
               {/* Reminders & Chatbot Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                 {/* Patient Reminders & Automated Calls */}
                 <PatientReminders patientId={patient.id} />
                 
                 {/* Patient Chatbot */}
-                <PatientChatbot patientId={patient.id} patientName={patient.name} />
+                <PatientChatbot patientId={patient.id} patientName={patient.name} className="h-[600px] lg:h-[calc(100vh-240px)] min-h-[500px] lg:min-h-[600px]" />
               </div>
             </div>
           </main>

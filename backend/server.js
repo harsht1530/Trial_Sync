@@ -14,6 +14,10 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// --- Authentication Routes ---
+const { router: authRoutes, authenticateToken } = require('./principle-investigator/routes/auth');
+app.use('/api/auth', authRoutes);
+
 // --- Principle Investigator Routes ---
 const subjectRoutes = require('./principle-investigator/routes/subjects');
 const dashboardRoutes = require('./principle-investigator/routes/dashboard');
@@ -22,12 +26,12 @@ const eproRoutes = require('./principle-investigator/routes/epro');
 const communicationsRoutes = require('./principle-investigator/routes/communications');
 const analyticsRoutes = require('./principle-investigator/routes/analytics');
 
-app.use('/api/subjects', subjectRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/validation', validationRoutes);
-app.use('/api/epro', eproRoutes);
-app.use('/api/communications', communicationsRoutes);
-app.use('/api/analytics', analyticsRoutes);
+app.use('/api/subjects', authenticateToken, subjectRoutes);
+app.use('/api/dashboard', authenticateToken, dashboardRoutes);
+app.use('/api/validation', authenticateToken, validationRoutes);
+app.use('/api/epro', authenticateToken, eproRoutes);
+app.use('/api/communications', authenticateToken, communicationsRoutes);
+app.use('/api/analytics', authenticateToken, analyticsRoutes);
 
 // --- Subject Panel Routes ---
 const subjectPanelProfileRoutes = require('./subject-panel/routes/profile');
@@ -36,6 +40,10 @@ app.use('/api/subject-panel', subjectPanelProfileRoutes);
 // --- Trial Copilot Hub Routes ---
 const hubAgentRoutes = require('./trial-copilot-hub/routes/agent');
 app.use('/api/hub', hubAgentRoutes);
+
+// --- AI Agent Proxy Route ---
+const aiAgentRoute = require('./routes/agentChat');
+app.use('/api/agent', aiAgentRoute);
 
 // Server Listen
 app.listen(PORT, () => {

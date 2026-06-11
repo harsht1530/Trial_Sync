@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/context/AuthContext";
 
 const DUMMY_NOTIFICATIONS = [
   {
@@ -39,6 +40,7 @@ const DUMMY_NOTIFICATIONS = [
 
 export function Header() {
   const [unreadCount, setUnreadCount] = useState(3);
+  const { user, logout } = useAuth();
 
   const handleNotificationOpen = (open: boolean) => {
     if (open) {
@@ -115,8 +117,8 @@ export function Header() {
                 <User className="h-3 w-3 sm:h-4 sm:w-4 text-primary-foreground" />
               </div>
               <div className="hidden md:block">
-                <p className="text-sm font-medium">Dr. Sarah Chen</p>
-                <p className="text-xs text-muted-foreground">Principal Investigator</p>
+                <p className="text-sm font-medium">{user?.name || "Dr. Sarah Chen"}</p>
+                <p className="text-xs text-muted-foreground">{user?.role || "Principal Investigator"}</p>
               </div>
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
             </div>
@@ -133,7 +135,7 @@ export function Header() {
               <span>Settings</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive">
+            <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive" onClick={logout}>
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>
             </DropdownMenuItem>

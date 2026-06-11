@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 export interface SidebarProps {
   activeTab?: string;
@@ -35,12 +36,13 @@ const navigation = [
 
 const bottomNav = [
   { id: "settings", name: "Settings", icon: Settings, path: "/" },
-  { id: "logout", name: "Logout", icon: LogOut, path: "https://multiplierai.co/agent/Trial_Sync_3/" },
+  { id: "logout", name: "Logout", icon: LogOut, path: "#" },
 ];
 
 export function SidebarContent({ activeTab: propActiveTab, onTabChange, className }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [currentLogoIndex, setCurrentLogoIndex] = useState(0);
 
   const logos = [
@@ -71,6 +73,10 @@ export function SidebarContent({ activeTab: propActiveTab, onTabChange, classNam
   const handleNavClick = (item: { id: string; name: string; icon: any; path: string }) => {
     if (onTabChange) {
       onTabChange(item.id);
+    }
+    if (item.id === "logout") {
+      logout();
+      return;
     }
     if (item.path.startsWith("http")) {
       window.location.href = item.path;

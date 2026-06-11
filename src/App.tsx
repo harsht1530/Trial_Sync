@@ -14,29 +14,36 @@ import { Analytics } from "./pages/Analytics";
 import NotFound from "./pages/NotFound";
 import { GlobalFloatingChatbot } from "@/components/layout/GlobalFloatingChatbot";
 
+import { AuthProvider } from "@/context/AuthContext";
+import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
+import Login from "./pages/Login";
+
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <HashRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/subject" element={<Patients />} />
-          <Route path="/validation" element={<DataValidation />} />
-          <Route path="/subjects/:id" element={<PatientProfile />} />
-          <Route path="/epro" element={<EPRO />} />
-          <Route path="/communications" element={<Communications />} />
-          <Route path="/symptoms" element={<SymptomTracker />} />
-          <Route path="/analytics" element={<Analytics />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </HashRouter>
-      <GlobalFloatingChatbot />
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <HashRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/subject" element={<ProtectedRoute><Patients /></ProtectedRoute>} />
+            <Route path="/validation" element={<ProtectedRoute><DataValidation /></ProtectedRoute>} />
+            <Route path="/subjects/:id" element={<ProtectedRoute><PatientProfile /></ProtectedRoute>} />
+            <Route path="/epro" element={<ProtectedRoute><EPRO /></ProtectedRoute>} />
+            <Route path="/communications" element={<ProtectedRoute><Communications /></ProtectedRoute>} />
+            <Route path="/symptoms" element={<ProtectedRoute><SymptomTracker /></ProtectedRoute>} />
+            <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <GlobalFloatingChatbot />
+        </HashRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

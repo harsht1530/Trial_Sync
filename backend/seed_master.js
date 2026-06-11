@@ -1,5 +1,6 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 // Unified DB setup
 const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/CLINIK';
@@ -65,12 +66,21 @@ const seedMasterData = async () => {
     ]);
     console.log(`Seeded ${trials.length} trials.`);
 
-    console.log('\nSeeding Users (Principal Investigator & Site Incharge)...');
+    console.log('\nSeeding Users (All Roles with hashed passwords)...');
+
+    // Pre-hash all passwords
+    const hashPassword = async (plain) => bcrypt.hash(plain, 10);
+    const piPassword     = await hashPassword('PI@TrialSync2025');
+    const siPassword     = await hashPassword('Site@TrialSync2025');
+    const scPassword     = await hashPassword('Coord@TrialSync2025');
+    const subPassword    = await hashPassword('Subject@TrialSync2025');
+
     const users = await Users.insertMany([
       {
         name: "Dr. Sarah Smith",
         phone: "+1-555-123-4567",
         email: "sarah.smith@clinik.com",
+        password: piPassword,
         role: "Principal Investigator",
         scheduled_reminders: [
           {
@@ -110,6 +120,7 @@ const seedMasterData = async () => {
         name: "Maria Coordinator",
         phone: "+1-555-987-6543",
         email: "maria@clinik.com",
+        password: siPassword,
         role: "Site Incharge",
         scheduled_reminders: [
           {
@@ -123,18 +134,6 @@ const seedMasterData = async () => {
             delivery_channel: "CALL",
             next_schedule: "2025-08-26T08:00:00Z",
             created_at: "2025-08-20T08:00:00Z"
-          },
-          {
-            reminder_id: "REM002",
-            title: "Vitals Check",
-            description: "Please record your blood pressure.",
-            status: "Active",
-            is_enabled: true,
-            time: "10:00 AM",
-            frequency: "Weekly",
-            delivery_channel: "SMS",
-            next_schedule: "2025-08-30T10:00:00Z",
-            created_at: "2025-08-20T08:00:00Z"
           }
         ],
         recent_call_history: [
@@ -146,16 +145,6 @@ const seedMasterData = async () => {
             message: "Subject confirmed medication adherence.",
             call_datetime: "2025-08-25T08:02:00Z",
             duration: "1m 20s",
-            channel: "Voice Call"
-          },
-          {
-            call_id: "CALL002",
-            call_type: "Inbound Call",
-            reminder_name: "Manual Query",
-            status: "Completed",
-            message: "Subject reported mild headache.",
-            call_datetime: "2025-08-24T14:20:00Z",
-            duration: "4m 15s",
             channel: "Voice Call"
           }
         ],
@@ -171,9 +160,50 @@ const seedMasterData = async () => {
             }
           ]
         }
+      },
+      {
+        name: "Alex Rodriguez",
+        phone: "+1-555-321-7890",
+        email: "alex.rodriguez@clinik.com",
+        password: scPassword,
+        role: "Site Coordinator",
+        scheduled_reminders: [],
+        recent_call_history: [],
+        conversationsHistory: {}
+      },
+      {
+        name: "John Carter",
+        phone: "+91-9876543210",
+        email: "john.carter@example.com",
+        password: subPassword,
+        role: "Subject",
+        scheduled_reminders: [
+          {
+            reminder_id: "REM-SUB-01",
+            title: "Morning Medication",
+            description: "Time to take your morning medicines.",
+            status: "Active",
+            is_enabled: true,
+            time: "08:00 AM",
+            frequency: "Daily",
+            delivery_channel: "CALL",
+            next_schedule: "2025-08-26T08:00:00Z",
+            created_at: "2025-08-20T08:00:00Z"
+          }
+        ],
+        recent_call_history: [],
+        conversationsHistory: {}
       }
     ]);
-    console.log(`Seeded ${users.length} logged-in users.`);
+    console.log(`Seeded ${users.length} users with hashed passwords.`);
+
+    // Print credentials summary
+    console.log('\n===== SEEDED LOGIN CREDENTIALS =====');
+    console.log('Principal Investigator : sarah.smith@clinik.com  / PI@TrialSync2025');
+    console.log('Site Incharge          : maria@clinik.com         / Site@TrialSync2025');
+    console.log('Site Coordinator       : alex.rodriguez@clinik.com / Coord@TrialSync2025');
+    console.log('Subject                : john.carter@example.com  / Subject@TrialSync2025');
+    console.log('=====================================\n');
 
     console.log('\nSeeding 25 Master Clinical Trial Subjects...');
     const firstNames = ["James", "Mary", "Robert", "Patricia", "John", "Jennifer", "Michael", "Linda", "William", "Elizabeth", "David", "Barbara", "Richard", "Susan", "Joseph", "Jessica", "Thomas", "Sarah", "Charles", "Karen", "Christopher", "Nancy", "Daniel", "Lisa", "Matthew"];

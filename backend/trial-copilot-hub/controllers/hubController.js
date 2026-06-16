@@ -84,7 +84,8 @@ exports.getActiveTrials = async (req, res) => {
       });
 
       return {
-        trialId: trial.protocolTitle || trial.name || trial.trialId, // Frontend maps this to the display title
+        ...trial,
+        displayTitle: trial.protocolTitle || trial.name || trial.trialId,
         phase: trial.phase || 'Unknown Phase',
         status: trial.status || 'Active',
         enrolledCount: enrolledCount,

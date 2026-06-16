@@ -141,6 +141,7 @@ const subjectSchema = new mongoose.Schema({
   recent_call_history: { type: [recentCallHistorySchema], default: [] },
   wearable_data: { type: wearableDataSchema },
   adverse_events: { type: [aeSchema], default: [] },
+  visit_schedule: { type: Array, default: [] },
   audit: { type: auditSchema, default: () => ({}) }
 }, {
   timestamps: true,

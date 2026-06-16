@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const Agent = require('../models/Agent');
 const hubController = require('../controllers/hubController');
+const agentController = require('../controllers/agentController');
 
 router.get('/health', (req, res) => {
   res.json({ 
     status: 'Trial Copilot Hub API is running',
-    version: '1.0.1',
-    timestamp: '2026-05-04T13:54:00'
+    version: '1.0.2',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -22,6 +22,7 @@ router.post('/add-subject', hubController.addSubject);
 router.get('/visits/weekly', hubController.getWeeklySchedule);
 router.get('/visits/conflicts', hubController.detectConflicts);
 router.post('/visits/auto-resolve', hubController.autoResolveConflict);
+router.post('/visits/reschedule', hubController.rescheduleVisit);
 router.get('/visits/upcoming', hubController.getUpcomingVisits);
 router.get('/visits/nudges', hubController.getAINudges);
 router.post('/visits/book', hubController.bookVisit);
@@ -41,13 +42,9 @@ router.post('/compliance/resolve', hubController.resolveDeviation);
 router.post('/compliance/defer', hubController.deferDeviation);
 router.post('/compliance/assess', hubController.assessCompliance);
 
-router.get('/agents', async (req, res) => {
-  try {
-    const agents = await Agent.find();
-    res.json(agents);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// =========================
+// AI Agent Chat (Pydantic-AI style, Node.js)
+// =========================
+router.post('/agent/chat', agentController.chatWithAgent);
 
 module.exports = router;

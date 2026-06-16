@@ -41,9 +41,6 @@ app.use('/api/subject-panel', subjectPanelProfileRoutes);
 const hubAgentRoutes = require('./trial-copilot-hub/routes/agent');
 app.use('/api/hub', hubAgentRoutes);
 
-// --- AI Agent Proxy Route ---
-const aiAgentRoute = require('./routes/agentChat');
-app.use('/api/agent', aiAgentRoute);
 
 // Server Listen
 app.listen(PORT, () => {

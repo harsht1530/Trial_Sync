@@ -13,13 +13,59 @@ const HubComplianceScore = require('../models/HubComplianceScore');
 const HubProtocolDeviation = require('../models/HubProtocolDeviation');
 const HubComplianceRecommendation = require('../models/HubComplianceRecommendation');
 
+const getSubjectVisitSchedule = async (subject, weekStart) => {
+  if (subject.visit_schedule && subject.visit_schedule.length > 0) {
+    return subject.visit_schedule;
+  }
+  
+  // For legacy subjects, align their visits relative to weekStart so they show on the current calendar week!
+  const trial = await HubTrial.findOne({ $or: [{ id: subject.trial }, { trialId: subject.trial }] });
+  const visitStructure = trial?.visit_structure && trial.visit_structure.length > 0 ? trial.visit_structure : [
+    { id: "V1", name: "Visit 1", day: 0, procedures: ["Informed consent signed", "Inclusion & Exclusion Criteria"] },
+    { id: "V2", name: "Safety follow up by phone", day: 7, procedures: ["Safety follow up by phone"] },
+    { id: "V3", name: "Safety follow up by phone", day: 14, procedures: ["Safety follow up by phone"] },
+    { id: "V4", name: "Visit 2", day: 28, procedures: ["Physical Examination", "Blood Sampling"] }
+  ];
+
+  let enrollment = subject.enrollment_date ? new Date(subject.enrollment_date) : new Date();
+  if (enrollment < new Date("2026-01-01") && weekStart) {
+    enrollment = new Date(weekStart);
+  }
+
+  const schedule = [];
+  for (const v of visitStructure) {
+    const dayOffset = v.day || 0;
+    const scheduledDate = new Date(enrollment.getTime());
+    scheduledDate.setDate(scheduledDate.getDate() + dayOffset);
+    scheduledDate.setHours(9, 0, 0, 0);
+    
+    schedule.push({
+      visit_id: v.id,
+      visit_name: v.name,
+      day: dayOffset,
+      scheduled_date: scheduledDate.toISOString(),
+      scheduled_time: "09:00",
+      status: "Scheduled",
+      procedures: v.procedures || []
+    });
+  }
+  return schedule;
+};
+
 exports.getHealthSnapshot = async (req, res) => {
   try {
     const healthData = await HubSiteHealth.findOne().sort({ lastUpdated: -1 });
     if (!healthData) {
       return res.status(404).json({ message: 'Health snapshot data not found' });
     }
-    res.json(healthData);
+    
+    // Count active subjects from Clinical_Trial_Subject_Master
+    const activeCount = await HubSubject.countDocuments({ status: { $in: ['Active', 'active', 'Screening', 'On-treatment'] } });
+    
+    const responseData = healthData.toObject ? healthData.toObject() : healthData;
+    responseData.activeSubjectCount = activeCount;
+
+    res.json(responseData);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -27,8 +73,26 @@ exports.getHealthSnapshot = async (req, res) => {
 
 exports.getActiveTrials = async (req, res) => {
   try {
-    const trials = await HubTrial.find({ status: { $ne: 'Closeout' } });
-    res.json(trials);
+    const trials = await HubTrial.find({ status: { $ne: 'Closeout' } }).lean();
+    
+    const result = await Promise.all(trials.map(async (trial) => {
+      const computedTrialId = `${(trial.therapeuticArea || "ONCO").substring(0, 4).toUpperCase()}-${(trial.protocolNumber || "").toUpperCase()}`;
+      const searchIdentifiers = [trial.protocolTitle, trial.trialId, trial.id, computedTrialId].filter(Boolean);
+      
+      const enrolledCount = await HubSubject.countDocuments({
+        trial: { $in: searchIdentifiers }
+      });
+
+      return {
+        trialId: trial.protocolTitle || trial.name || trial.trialId, // Frontend maps this to the display title
+        phase: trial.phase || 'Unknown Phase',
+        status: trial.status || 'Active',
+        enrolledCount: enrolledCount,
+        targetCount: parseInt(trial.enrollmentTarget || trial.target || trial.targetCount || 0)
+      };
+    }));
+
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -122,56 +186,130 @@ exports.addSubject = async (req, res) => {
   try {
     const { trialId, subjectId, siteId, dob, sex, status, phone, inclusionCriteriaReviewed } = req.body;
     
-    if (!trialId || !subjectId || !siteId) {
+    if (!trialId || !subjectId) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    const trial = await HubTrial.findOne({ trialId });
+    const trial = await HubTrial.findOne({ $or: [{ id: trialId }, { trialId }] });
     if (!trial) {
       return res.status(400).json({ message: 'Invalid or inactive Trial ID' });
     }
 
+    // Compute trial code: First 4 letters on therapeuticArea + "-"+ protocolNumber (all in capital)
+    const therapeuticArea = trial.therapeuticArea || "ONCO";
+    const protocolNumber = trial.protocolNumber || "2024-A1";
+    const computedTrialId = `${therapeuticArea.substring(0, 4).toUpperCase()}-${protocolNumber.toUpperCase()}`;
+
     // Check by patient_id
-    const existing = await HubSubject.findOne({ patient_id: subjectId, trial: trialId });
+    const existing = await HubSubject.findOne({ patient_id: subjectId, trial: computedTrialId });
     if (existing) {
       return res.status(409).json({ message: 'Subject already exists within this trial' });
     }
 
-    // Map status from screening/consented/etc to master enums (Active, Inactive, Completed, Withdrawn, Screen Failure)
-    let masterStatus = 'Active';
-    if (status === 'discontinued') masterStatus = 'Withdrawn';
-    else if (status === 'inactive') masterStatus = 'Inactive';
+    // Find subject template in trial
+    const subTemplate = (trial.subjects || []).find(s => s.id === subjectId);
+    const subject_name = subTemplate ? `${subTemplate.firstName} ${subTemplate.lastName}` : `Subject ${subjectId}`;
+    const dobVal = subTemplate?.dob || dob || "";
+    const sexVal = subTemplate?.sex || sex || "";
+    const phoneVal = subTemplate?.phone || phone || "";
+    const emergencyName = subTemplate?.emergencyName || "";
+    const emergencyPhone = subTemplate?.emergencyPhone || "";
 
-    // Map phase (Screening, Treatment, Follow-up)
-    let masterPhase = 'Screening';
-    if (trial.phase && trial.phase.toLowerCase().includes('treatment')) masterPhase = 'Treatment';
-    else if (trial.phase && trial.phase.toLowerCase().includes('follow')) masterPhase = 'Follow-up';
+    // Parse risk
+    let riskVal = "Low";
+    if (subTemplate?.risk) {
+      if (subTemplate.risk.toLowerCase().includes("high")) riskVal = "High";
+      else if (subTemplate.risk.toLowerCase().includes("medium")) riskVal = "Medium";
+    }
 
+    // Schedule visits based on visit_structure
+    const visitStructure = trial.visit_structure && trial.visit_structure.length > 0 ? trial.visit_structure : [
+      { id: "V1", name: "Visit 1", day: 0, procedures: ["Informed consent signed", "Inclusion & Exclusion Criteria", "Physical Examination"] },
+      { id: "V2", name: "Safety follow up by phone", day: 7, procedures: ["Safety follow up by phone"] },
+      { id: "V3", name: "Safety follow up by phone", day: 14, procedures: ["Safety follow up by phone"] },
+      { id: "V4", name: "Visit 2", day: 28, procedures: ["Physical Examination", "Blood Sampling"] }
+    ];
+
+    const visit_schedule = [];
+    const scheduledVisits = [];
+    const baseDate = new Date();
+    baseDate.setDate(baseDate.getDate() + 1); // schedule next of enrollment_date
+    baseDate.setHours(9, 0, 0, 0); // default to 09:00 AM
+
+    for (const v of visitStructure) {
+      const dayOffset = v.day || 0;
+      const scheduledDate = new Date(baseDate.getTime());
+      scheduledDate.setDate(scheduledDate.getDate() + dayOffset);
+      const timeStr = "09:00";
+
+      visit_schedule.push({
+        visit_id: v.id,
+        visit_name: v.name,
+        day: dayOffset,
+        scheduled_date: scheduledDate.toISOString(),
+        scheduled_time: timeStr,
+        status: "Scheduled",
+        procedures: v.procedures || []
+      });
+
+      scheduledVisits.push({
+        subjectId: subjectId,
+        trialId: computedTrialId,
+        visitType: v.name,
+        scheduledDate: scheduledDate,
+        scheduledTime: timeStr,
+        duration: 1,
+        state: "standard",
+        siteId: trial.leadSite || trial.siteId || "SITE-NY-001"
+      });
+    }
+
+    // Insert to HubVisit collection
+    await HubVisit.insertMany(scheduledVisits);
+
+    // Save subject to Clinical_Trial_Subject_Master
+    const finalTrialValue = trial.protocolTitle || computedTrialId;
     const newSubject = await HubSubject.create({
+      piId: trial.piId || "PI-001",
       patient_id: subjectId,
-      subject_name: `Subject ${subjectId}`,
-      trial: trialId,
-      site: siteId,
-      status: masterStatus,
-      risk: 'Low',
-      phase: masterPhase,
+      subject_name: subject_name,
+      trial: finalTrialValue,
+      site: trial.leadSite || trial.siteId || "SITE-NY-001",
+      status: "Active",
+      compliance: 0,
+      risk: riskVal,
+      last_activity: new Date().toISOString(),
+      enrollment_date: new Date().toISOString(),
+      phase: "Treatment",
       contact: {
-        phone: phone || '',
-        email: ''
+        phone: phoneVal,
+        email: ""
       },
+      emergency_contact: {
+        name: emergencyName,
+        relationship: "Spouse",
+        phone: emergencyPhone
+      },
+      medical_history: {
+        conditions: [],
+        current_medications: [],
+        allergies: []
+      },
+      scheduled_reminders: [],
+      recent_call_history: [],
       wearable_data: {
         device: {
-          device_id: `DEV-${subjectId}`,
-          name: 'ClinikBand v3',
-          battery_percentage: 100,
-          connection_status: 'Connected',
-          last_sync: new Date().toISOString()
+          device_id: "",
+          name: "",
+          battery_percentage: 0,
+          connection_status: "Disconnected",
+          last_sync: ""
         },
         health_summary: {
-          heart_rate: { value: 75, unit: 'BPM', change_percentage: '0%' },
-          steps: { value: 0, unit: 'steps', change_percentage: '0%' },
-          sleep: { value: 8.0, unit: 'hrs', change_percentage: '0%' },
-          calories: { value: 0, unit: 'kcal', change_percentage: '0%' }
+          heart_rate: { value: 0, unit: "BPM", change_percentage: "0%" },
+          steps: { value: 0, unit: "steps", change_percentage: "0%" },
+          sleep: { value: 0, unit: "hrs", change_percentage: "0%" },
+          calories: { value: 0, unit: "kcal", change_percentage: "0%" }
         },
         daily_step_goal: {
           completed_steps: 0,
@@ -179,16 +317,21 @@ exports.addSubject = async (req, res) => {
           progress_percentage: 0
         },
         recent_readings: [],
-        updated_at: new Date().toISOString()
+        updated_at: ""
       },
+      adverse_events: [],
+      visit_schedule: visit_schedule,
       audit: {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        created_by: 'USER-SC-001'
+        created_by: "system_admin"
       }
     });
 
-    res.status(201).json(newSubject);
+    res.status(201).json({
+      subject: newSubject,
+      scheduledVisits: visit_schedule
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -205,12 +348,46 @@ exports.getWeeklySchedule = async (req, res) => {
     const end = new Date(start);
     end.setDate(start.getDate() + 5); // Mon-Fri window
 
-    const visits = await HubVisit.find({
-      scheduledDate: { $gte: start, $lt: end },
-      siteId: 'SITE-NY-001' // Scoped to site
-    }).sort({ scheduledDate: 1, scheduledTime: 1 });
+    // Fetch all subjects from Clinical_Trial_Subject_Master
+    const subjects = await HubSubject.find({});
+    const weeklyVisits = [];
 
-    res.json(visits);
+    for (const sub of subjects) {
+      const schedule = await getSubjectVisitSchedule(sub, start);
+      for (const v of schedule) {
+        const vDate = new Date(v.scheduled_date);
+        if (vDate >= start && vDate < end) {
+          weeklyVisits.push({
+            subjectId: sub.patient_id,
+            trialId: sub.trial,
+            visitType: v.visit_name,
+            scheduledDate: v.scheduled_date,
+            scheduledTime: v.scheduled_time,
+            duration: 1,
+            state: 'standard',
+            procedures: v.procedures || []
+          });
+        }
+      }
+    }
+
+    // Detect conflicts in weeklyVisits (same date and same time slot)
+    const slotCounts = {};
+    for (const v of weeklyVisits) {
+      const d = new Date(v.scheduledDate).toISOString().split('T')[0];
+      const slotKey = `${d} @ ${v.scheduledTime}`;
+      slotCounts[slotKey] = (slotCounts[slotKey] || 0) + 1;
+    }
+
+    for (const v of weeklyVisits) {
+      const d = new Date(v.scheduledDate).toISOString().split('T')[0];
+      const slotKey = `${d} @ ${v.scheduledTime}`;
+      if (slotCounts[slotKey] > 1) {
+        v.state = 'conflict';
+      }
+    }
+
+    res.json(weeklyVisits);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -223,12 +400,123 @@ exports.detectConflicts = async (req, res) => {
     const end = new Date(start);
     end.setDate(start.getDate() + 7);
 
-    const conflicts = await HubVisit.find({
-      state: 'conflict',
-      scheduledDate: { $gte: start, $lt: end }
-    });
+    // Fetch all subjects from Clinical_Trial_Subject_Master
+    const subjects = await HubSubject.find({});
+    const allVisits = [];
+
+    for (const sub of subjects) {
+      const schedule = await getSubjectVisitSchedule(sub, start);
+      for (const v of schedule) {
+        const vDate = new Date(v.scheduled_date);
+        if (vDate >= start && vDate < end) {
+          allVisits.push({
+            subjectId: sub.patient_id,
+            trialId: sub.trial,
+            visitType: v.visit_name,
+            scheduledDate: v.scheduled_date,
+            scheduledTime: v.scheduled_time,
+            procedures: v.procedures || []
+          });
+        }
+      }
+    }
+
+    // Detect conflicts (two visits on the same date and time)
+    const conflicts = [];
+    
+    for (let i = 0; i < allVisits.length; i++) {
+      const v1 = allVisits[i];
+      const d1 = new Date(v1.scheduledDate).toISOString().split('T')[0];
+      const slotKey = `${d1} @ ${v1.scheduledTime}`;
+
+      for (let j = i + 1; j < allVisits.length; j++) {
+        const v2 = allVisits[j];
+        const d2 = new Date(v2.scheduledDate).toISOString().split('T')[0];
+        const slotKey2 = `${d2} @ ${v2.scheduledTime}`;
+
+        if (slotKey === slotKey2) {
+          conflicts.push({
+            subjectId: v1.subjectId,
+            trialId: v1.trialId,
+            visitType: v1.visitType,
+            scheduledDate: v1.scheduledDate,
+            scheduledTime: v1.scheduledTime,
+            state: 'conflict',
+            conflictDetails: {
+              conflictingSubjectId: v2.subjectId,
+              conflictingVisitType: v2.visitType,
+              resolutionRecommendedSlot: {
+                // Recommend next day
+                date: new Date(new Date(v1.scheduledDate).getTime() + 24 * 60 * 60 * 1000).toISOString(),
+                time: v1.scheduledTime
+              }
+            }
+          });
+        }
+      }
+    }
 
     res.json(conflicts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.rescheduleVisit = async (req, res) => {
+  try {
+    const { subjectId, visitName, newDate, newTime } = req.body;
+    if (!subjectId || !visitName || !newDate || !newTime) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Find the subject
+    const subject = await HubSubject.findOne({ patient_id: subjectId });
+    if (!subject) {
+      return res.status(404).json({ message: "Subject not found" });
+    }
+
+    // Update their visit_schedule
+    let hasScheduleField = subject.visit_schedule && subject.visit_schedule.length > 0;
+    
+    // If they don't have stored visit_schedule yet (legacy subject), let's generate it
+    let schedule = hasScheduleField ? subject.visit_schedule : await getSubjectVisitSchedule(subject, new Date(newDate));
+    
+    schedule = schedule.map(v => {
+      if (v.visit_name === visitName) {
+        const formattedDate = new Date(newDate);
+        formattedDate.setHours(9, 0, 0, 0); // default hour
+        return {
+          ...v,
+          scheduled_date: formattedDate.toISOString(),
+          scheduled_time: newTime
+        };
+      }
+      return v;
+    });
+
+    subject.visit_schedule = schedule;
+    subject.markModified('visit_schedule');
+    await subject.save();
+
+    // Sync to HubVisit collection for calendar view
+    const dateObj = new Date(newDate);
+    const updatedVisit = await HubVisit.findOneAndUpdate(
+      { subjectId: subjectId, visitType: visitName },
+      {
+        trialId: subject.trial || "Unknown",
+        scheduledDate: dateObj,
+        scheduledTime: newTime,
+        state: 'standard',
+        conflictDetails: null
+      },
+      { new: true, upsert: true }
+    );
+
+    res.json({
+      message: "Visit rescheduled successfully",
+      subject,
+      updatedVisit
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -267,15 +555,42 @@ exports.autoResolveConflict = async (req, res) => {
 exports.getUpcomingVisits = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 5;
-    // We use a mock date from our seeded data week (Thursday) so that we have 'upcoming' visits for the demo
-    const baseDate = new Date("2025-02-13T00:00:00Z"); 
-    const visits = await HubVisit.find({
-      scheduledDate: { $gte: baseDate }
-    })
-    .sort({ scheduledDate: 1, scheduledTime: 1 })
-    .limit(limit);
 
-    res.json(visits);
+    // Use start of current week as the base for legacy subjects
+    const monday = new Date();
+    const day = monday.getDay();
+    const diff = monday.getDate() - day + (day === 0 ? -6 : 1);
+    monday.setDate(diff);
+    monday.setHours(0, 0, 0, 0);
+
+    const subjects = await HubSubject.find({});
+    let allScheduled = [];
+
+    for (const sub of subjects) {
+      const schedule = await getSubjectVisitSchedule(sub, monday);
+      for (const v of schedule) {
+        allScheduled.push({
+          subjectId: sub.patient_id,
+          trialId: sub.trial,
+          visitType: v.visit_name,
+          scheduledDate: v.scheduled_date,
+          scheduledTime: v.scheduled_time,
+          duration: 1,
+          state: 'standard',
+          procedures: v.procedures || []
+        });
+      }
+    }
+
+    // Sort by scheduledDate ascending
+    allScheduled.sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+
+    // Filter to show only upcoming visits
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const upcoming = allScheduled.filter(v => new Date(v.scheduledDate) >= today);
+
+    res.json(upcoming.slice(0, limit));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -305,40 +620,68 @@ exports.getAINudges = async (req, res) => {
 
 exports.bookVisit = async (req, res) => {
   try {
-    const { subjectId, trialId, visitType, date, time } = req.body;
+    const { subjectId, visitName, date, time, procedures } = req.body;
 
-    // Validate conflict
-    const conflict = await HubVisit.findOne({
-      scheduledDate: new Date(date),
-      scheduledTime: time,
-      siteId: 'SITE-NY-001'
-    });
-
-    if (conflict) {
-      return res.status(409).json({ 
-        message: 'Conflict detected', 
-        conflict: {
-          subjectId: conflict.subjectId,
-          time: conflict.scheduledTime
-        }
-      });
+    if (!subjectId || !visitName || !date || !time) {
+      return res.status(400).json({ message: 'Missing required fields: subjectId, visitName, date, time' });
     }
 
-    const newVisit = await HubVisit.create({
+    // Find the subject in Clinical_Trial_Subject_Master
+    const subject = await HubSubject.findOne({ patient_id: subjectId });
+    if (!subject) {
+      return res.status(404).json({ message: `Subject '${subjectId}' not found` });
+    }
+
+    // Generate next visit_id (V1, V2, V3 …)
+    const existingSchedule = subject.visit_schedule || [];
+    const visitNums = existingSchedule
+      .map(v => parseInt((v.visit_id || '').replace(/\D/g, ''), 10))
+      .filter(n => !isNaN(n));
+    const nextNum = visitNums.length > 0 ? Math.max(...visitNums) + 1 : existingSchedule.length + 1;
+    const visit_id = `V${nextNum}`;
+
+    // Calculate day offset from enrollment date
+    const enrollmentDate = subject.enrollment_date ? new Date(subject.enrollment_date) : new Date();
+    const scheduledDateObj = new Date(date);
+    const dayOffset = Math.round((scheduledDateObj - enrollmentDate) / (1000 * 60 * 60 * 24));
+
+    const newVisitEntry = {
+      visit_id,
+      visit_name: visitName,
+      day: Math.max(0, dayOffset),
+      scheduled_date: scheduledDateObj.toISOString(),
+      scheduled_time: time,
+      status: 'Scheduled',
+      procedures: Array.isArray(procedures) ? procedures : []
+    };
+
+    // Push into visit_schedule and save
+    subject.visit_schedule.push(newVisitEntry);
+    subject.markModified('visit_schedule');
+    await subject.save();
+
+    // Also mirror into HubVisit collection for the calendar view
+    await HubVisit.create({
       subjectId,
-      trialId,
-      visitType,
-      scheduledDate: new Date(date),
+      trialId: subject.trial || '',
+      visitType: visitName,
+      scheduledDate: scheduledDateObj,
       scheduledTime: time,
       state: 'standard',
-      siteId: 'SITE-NY-001'
+      siteId: subject.site || 'SITE-NY-001'
     });
 
-    res.status(201).json(newVisit);
+    res.status(201).json({
+      message: 'Visit booked successfully',
+      visit: newVisitEntry,
+      subjectId,
+      trialId: subject.trial
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 exports.getSafetySummary = async (req, res) => {
   try {

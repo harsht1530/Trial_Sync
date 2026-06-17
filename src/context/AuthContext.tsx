@@ -44,7 +44,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         if (res.ok) {
           const data = await res.json();
-          setUser(data.user);
+          if (data.user.role !== "Principal Investigator") {
+            logout();
+          } else {
+            setUser(data.user);
+          }
         } else {
           // Token expired or invalid
           logout();
@@ -72,6 +76,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       const data = await res.json();
       if (res.ok) {
+        if (data.user.role !== "Principal Investigator") {
+          toast.error("Access Denied", {
+            description: "Invalid role for this portal. Expected Principal Investigator.",
+          });
+          return false;
+        }
         localStorage.setItem("nexus_token", data.token);
         setToken(data.token);
         setUser(data.user);
@@ -109,6 +119,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       const data = await res.json();
       if (res.ok) {
+        if (data.user.role !== "Principal Investigator") {
+          toast.error("Access Denied", {
+            description: "Invalid role for this portal. Expected Principal Investigator.",
+          });
+          return false;
+        }
         localStorage.setItem("nexus_token", data.token);
         setToken(data.token);
         setUser(data.user);
@@ -146,6 +162,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       const data = await res.json();
       if (res.ok) {
+        if (data.user.role !== "Principal Investigator") {
+          toast.error("Access Denied", {
+            description: "Invalid role for this portal. Expected Principal Investigator.",
+          });
+          return false;
+        }
         localStorage.setItem("nexus_token", data.token);
         setToken(data.token);
         setUser(data.user);

@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { API_BASE_URL } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { PatientTable } from "@/components/dashboard/PatientTable";
 import { ValidationStatus } from "@/components/dashboard/ValidationStatus";
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 
 const Index = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [summary, setSummary] = useState<any>(null);
 
@@ -46,7 +48,7 @@ const Index = () => {
               {/* Page Header */}
               <div className="mb-8 animate-fade-in">
                 <h1 className="text-3xl font-bold mb-2">
-                  Welcome back, <span className="gradient-text">Dr. Chen</span>
+                  Welcome back, <span className="gradient-text">{user?.name || "User"}</span>
                 </h1>
                 <p className="text-muted-foreground">
                   Here's an overview of your clinical trials and subject engagement metrics.

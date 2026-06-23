@@ -13,6 +13,15 @@ const HubComplianceScore = require('../models/HubComplianceScore');
 const HubProtocolDeviation = require('../models/HubProtocolDeviation');
 const HubComplianceRecommendation = require('../models/HubComplianceRecommendation');
 
+const { OpenAI } = require('openai');
+
+const openai = new OpenAI({
+  baseURL: (process.env.OPENAI_BASE_URL || 'https://ollama.com/v1').trim(),
+  apiKey: (process.env.OPENAI_API_KEY || '').trim(),
+});
+
+const MODEL = (process.env.AI_AGENT_MODEL || 'gpt-oss:120b-cloud').trim();
+
 const getSubjectVisitSchedule = async (subject, weekStart) => {
   if (subject.visit_schedule && subject.visit_schedule.length > 0) {
     return subject.visit_schedule;
@@ -60,10 +69,27 @@ exports.getHealthSnapshot = async (req, res) => {
     }
     
     // Count active subjects from Clinical_Trial_Subject_Master
-    const activeCount = await HubSubject.countDocuments({ status: { $in: ['Active', 'active', 'Screening', 'On-treatment'] } });
+    const subjects = await HubSubject.find({});
+    
+    let activeCount = 0;
+    let openAECount = 0;
+
+    for (const sub of subjects) {
+      // count active
+      if (['Active', 'active', 'Screening', 'On-treatment'].includes(sub.status)) {
+        activeCount++;
+      }
+      // count active AEs
+      for (const ae of sub.adverse_events || []) {
+        if (ae.status !== 'Resolved') {
+          openAECount++;
+        }
+      }
+    }
     
     const responseData = healthData.toObject ? healthData.toObject() : healthData;
     responseData.activeSubjectCount = activeCount;
+    responseData.openAECount = openAECount;
 
     res.json(responseData);
   } catch (err) {
@@ -101,9 +127,6 @@ exports.getActiveTrials = async (req, res) => {
 
 exports.getInsightsAndActivity = async (req, res) => {
   try {
-    const insights = await HubInsight.find().limit(5);
-    const actions = await HubAction.find().limit(5);
-    
     // Paginated activity feed
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -114,9 +137,45 @@ exports.getInsightsAndActivity = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
+    // Dynamic AI Insights & Actions
+    let insightsData = [];
+    let actionsData = [];
+    
+    try {
+      const siteId = 'SITE-NY-001';
+      const activeSubjects = await HubSubject.countDocuments({ status: { $in: ['Active', 'active', 'Screening', 'On-treatment'] } });
+      
+      let activeAECount = 0;
+      const subjects = await HubSubject.find({ site: siteId });
+      for (const sub of subjects) {
+        for (const ae of sub.adverse_events || []) {
+          if (ae.status !== 'Resolved') activeAECount++;
+        }
+      }
+
+      const summaryText = `Site Metrics: ${activeSubjects} active subjects. ${activeAECount} open AEs.`;
+      const completion = await openai.chat.completions.create({
+        model: MODEL,
+        messages: [
+          { role: 'system', content: 'You are an AI Clinical Site Manager. Analyze the site metrics and return exactly 2 insights and 2 actions in a JSON object format: { "insights": [{ "id": "INS-1", "type": "warning" | "success" | "info", "text": "...", "metric": "..." }], "actions": [{ "id": "ACT-1", "title": "...", "description": "...", "priority": "high" | "medium" | "low" }] }. Do NOT include markdown blocks like ```json.' },
+          { role: 'user', content: summaryText }
+        ]
+      });
+
+      const responseText = completion.choices[0].message.content.trim().replace(/```json/g, '').replace(/```/g, '');
+      const aiParsed = JSON.parse(responseText);
+      insightsData = aiParsed.insights || [];
+      actionsData = aiParsed.actions || [];
+    } catch (error) {
+      console.error("AI Insights Generation failed:", error);
+      // Fallback to DB
+      insightsData = await HubInsight.find().limit(2);
+      actionsData = await HubAction.find().limit(2);
+    }
+
     res.json({
-      insights,
-      actions,
+      insights: insightsData,
+      actions: actionsData,
       activityFeed,
       currentPage: page,
       limit
@@ -132,7 +191,10 @@ exports.getSubjects = async (req, res) => {
     let query = {};
     
     if (status && status !== 'all' && status !== 'ai-flagged') {
-      query.status = new RegExp(`^${status.trim()}$`, 'i');
+      // The frontend sends the filter via the "status" query param, but we map it to "phase" field.
+      // Also restore spaces if needed, but the regex 'i' handles case.
+      const filterStr = status.trim().replace(/-/g, ' '); 
+      query.phase = new RegExp(`^${status.trim()}$`, 'i');
     }
     
     if (aiFlagged === 'true' || status === 'ai-flagged') {
@@ -185,26 +247,24 @@ exports.getPriorityRecommendations = async (req, res) => {
 
 exports.addSubject = async (req, res) => {
   try {
-    const { trialId, subjectId, siteId, dob, sex, status, phone, inclusionCriteriaReviewed } = req.body;
+    const { trialId, subjectId, siteId, dob, sex, status, phone, inclusionCriteriaReviewed, phase, risk } = req.body;
     
     if (!trialId || !subjectId) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    const trial = await HubTrial.findOne({ $or: [{ id: trialId }, { trialId }] });
+    const trial = await HubTrial.findOne({ $or: [{ id: trialId }, { trialId }] }).lean();
     if (!trial) {
       return res.status(400).json({ message: 'Invalid or inactive Trial ID' });
     }
 
-    // Compute trial code: First 4 letters on therapeuticArea + "-"+ protocolNumber (all in capital)
-    const therapeuticArea = trial.therapeuticArea || "ONCO";
-    const protocolNumber = trial.protocolNumber || "2024-A1";
-    const computedTrialId = `${therapeuticArea.substring(0, 4).toUpperCase()}-${protocolNumber.toUpperCase()}`;
+    const nct = trial.nct_id || trial.nctId || "";
+    const formattedTrialName = trial.condition ? `${trial.condition} - ${nct}` : (trial.protocolTitle || trial.name || trial.id);
 
-    // Check by patient_id
-    const existing = await HubSubject.findOne({ patient_id: subjectId, trial: computedTrialId });
+    // Check by patient_id globally across all trials to prevent E11000 duplicate key error
+    const existing = await HubSubject.findOne({ patient_id: subjectId });
     if (existing) {
-      return res.status(409).json({ message: 'Subject already exists within this trial' });
+      return res.status(409).json({ message: `Subject ${subjectId} already exists in the system.` });
     }
 
     // Find subject template in trial
@@ -217,11 +277,13 @@ exports.addSubject = async (req, res) => {
     const emergencyPhone = subTemplate?.emergencyPhone || "";
 
     // Parse risk
-    let riskVal = "Low";
-    if (subTemplate?.risk) {
+    let riskVal = risk || "Low";
+    if (!risk && subTemplate?.risk) {
       if (subTemplate.risk.toLowerCase().includes("high")) riskVal = "High";
       else if (subTemplate.risk.toLowerCase().includes("medium")) riskVal = "Medium";
     }
+    
+    let phaseVal = phase || "Treatment";
 
     // Schedule visits based on visit_structure
     const visitStructure = trial.visit_structure && trial.visit_structure.length > 0 ? trial.visit_structure : [
@@ -255,7 +317,7 @@ exports.addSubject = async (req, res) => {
 
       scheduledVisits.push({
         subjectId: subjectId,
-        trialId: computedTrialId,
+        trialId: formattedTrialName,
         visitType: v.name,
         scheduledDate: scheduledDate,
         scheduledTime: timeStr,
@@ -269,19 +331,18 @@ exports.addSubject = async (req, res) => {
     await HubVisit.insertMany(scheduledVisits);
 
     // Save subject to Clinical_Trial_Subject_Master
-    const finalTrialValue = trial.protocolTitle || computedTrialId;
     const newSubject = await HubSubject.create({
       piId: trial.piId || "PI-001",
       patient_id: subjectId,
       subject_name: subject_name,
-      trial: finalTrialValue,
+      trial: formattedTrialName,
       site: trial.leadSite || trial.siteId || "SITE-NY-001",
       status: "Active",
       compliance: 0,
       risk: riskVal,
       last_activity: new Date().toISOString(),
       enrollment_date: new Date().toISOString(),
-      phase: "Treatment",
+      phase: phaseVal,
       contact: {
         phone: phoneVal,
         email: ""
@@ -525,14 +586,45 @@ exports.rescheduleVisit = async (req, res) => {
 
 exports.autoResolveConflict = async (req, res) => {
   try {
-    const { subjectId, currentSlot, newSlot } = req.body;
+    const { subjectId, visitName, currentSlot, newSlot } = req.body;
     
-    // In a real app, we'd validate the protocol tolerance window here
+    // 1. Update the HubSubject's visit_schedule since getWeeklySchedule relies on it
+    const subject = await HubSubject.findOne({ patient_id: subjectId });
+    if (!subject) {
+      return res.status(404).json({ message: 'Subject not found' });
+    }
+
+    if (subject.visit_schedule && subject.visit_schedule.length > 0) {
+      let updated = false;
+      subject.visit_schedule = subject.visit_schedule.map(v => {
+        // match by visit_name and current date
+        const vDate = new Date(v.scheduled_date).toISOString().split('T')[0];
+        const cDate = new Date(currentSlot.date).toISOString().split('T')[0];
+        
+        if (v.visit_name === visitName && vDate === cDate) {
+          updated = true;
+          const formattedDate = new Date(newSlot.date);
+          formattedDate.setHours(9, 0, 0, 0); // maintain default structure hour if needed, or exact time
+          return {
+            ...v,
+            scheduled_date: formattedDate.toISOString(),
+            scheduled_time: newSlot.time
+          };
+        }
+        return v;
+      });
+      
+      if (updated) {
+        subject.markModified('visit_schedule');
+        await subject.save();
+      }
+    }
+
+    // 2. Also update HubVisit
     const visit = await HubVisit.findOneAndUpdate(
       { 
         subjectId, 
-        scheduledDate: new Date(currentSlot.date),
-        scheduledTime: currentSlot.time
+        visitType: visitName || { $exists: true }
       },
       {
         scheduledDate: new Date(newSlot.date),
@@ -543,11 +635,7 @@ exports.autoResolveConflict = async (req, res) => {
       { new: true }
     );
 
-    if (!visit) {
-      return res.status(404).json({ message: 'Visit not found' });
-    }
-
-    res.json(visit);
+    res.json({ message: 'Auto-resolved', subject });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -755,15 +843,54 @@ exports.getSafetySummary = async (req, res) => {
 exports.getSafetyAnomalies = async (req, res) => {
   try {
     const siteId = 'SITE-NY-001';
-    const anomaly = await HubSafetyAnomaly.findOne({ siteId, status: 'active' });
     
-    if (!anomaly) {
+    // 1. Gather active AEs
+    const subjects = await HubSubject.find({ site: siteId });
+    const activeAEs = [];
+    for (const sub of subjects) {
+      for (const ae of sub.adverse_events || []) {
+        if (ae.status !== 'Resolved') {
+          activeAEs.push({ aeType: ae.aeType, severity: ae.severityLabel, onset_date: ae.onset_date });
+        }
+      }
+    }
+
+    if (activeAEs.length === 0) {
       return res.json({ status: 'no_anomaly', payload: {} });
     }
-    
+
+    // 2. Query LLM to identify pattern
+    let anomalyData = null;
+    try {
+      const summaryText = JSON.stringify(activeAEs);
+      const completion = await openai.chat.completions.create({
+        model: MODEL,
+        messages: [
+          { role: 'system', content: 'You are an AI Clinical Data Analyst. Identify notable anomalies or patterns from the list of active adverse events (e.g., multiple severe identical AEs). Return a JSON object exactly in this format: { "title": "Anomaly Title", "description": "Short description of the pattern", "severity": "High" | "Medium" | "Low", "affectedCount": Number }. If no anomaly exists or list is too small, return an empty object {}. Do NOT include markdown blocks like ```json.' },
+          { role: 'user', content: summaryText }
+        ]
+      });
+
+      const responseText = completion.choices[0].message.content.trim().replace(/```json/g, '').replace(/```/g, '');
+      anomalyData = JSON.parse(responseText);
+    } catch (error) {
+      console.error("AI Anomaly Generation failed:", error);
+    }
+
+    if (!anomalyData || !anomalyData.title) {
+      return res.json({ status: 'no_anomaly', payload: {} });
+    }
+
     res.json({
       status: 'active',
-      payload: anomaly
+      payload: {
+        id: `ANOMALY-${Date.now()}`,
+        title: anomalyData.title,
+        description: anomalyData.description,
+        severity: anomalyData.severity,
+        affectedSubjects: anomalyData.affectedCount || 1,
+        dateIdentified: new Date().toISOString()
+      }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -812,7 +939,7 @@ exports.getAEList = async (req, res) => {
         // Apply filters
         if (status && aeObj.status !== status) continue;
         if (severity && aeObj.severityLabel !== severity) continue;
-        if (ai_flagged && aeObj.ai_flagged !== (ai_flagged === 'true')) continue;
+        if (ai_flagged === 'true' && !aeObj.ai_flagged) continue;
         if (trial_id && aeObj.trialId !== trial_id) continue;
         
         aes.push(aeObj);
@@ -886,6 +1013,24 @@ exports.reportAE = async (req, res) => {
     const ae_id = `AE-${Date.now()}`;
     const ae_status = initialStatus || 'Active';
     
+    // AI Flagging
+    let ai_flagged = false;
+    try {
+      const completion = await openai.chat.completions.create({
+        model: MODEL,
+        messages: [
+          { role: 'system', content: 'You are an AI Clinical Evaluator. Evaluate the following Adverse Event. Reply with ONLY "true" if the event is high risk, critical, life-threatening, cardiac, neurological, or requires urgent investigator attention. Otherwise reply with "false".' },
+          { role: 'user', content: `Diagnosis: ${aeType}\nSeverity Grade: ${severityGrade}\nLabel: ${severityLabel}` }
+        ]
+      });
+      const aiResponse = completion.choices[0].message.content.trim().toLowerCase();
+      if (aiResponse.includes('true')) {
+        ai_flagged = true;
+      }
+    } catch (error) {
+      console.error("AI AE Flagging failed:", error);
+    }
+    
     const newAE = {
       ae_id,
       severity: generalSeverity,
@@ -906,7 +1051,7 @@ exports.reportAE = async (req, res) => {
       is_sae: autoSAE,
       days_to_report: daysToReport,
       late_report: lateReport,
-      ai_flagged: false
+      ai_flagged: ai_flagged
     };
     
     subject.adverse_events.push(newAE);
@@ -1113,16 +1258,18 @@ exports.assessCompliance = async (req, res) => {
 
     // 1. Logic for "Visits completed within protocol window / Total scheduled visits"
     // For the demo, we will refresh the scores with small random fluctuations or logic-based updates
-    const activeTrials = await HubTrial.find({ siteId, status: { $ne: 'Closeout' } });
+    const activeTrials = await HubTrial.find({});
     
     for (const trial of activeTrials) {
-      const currentScoreObj = await HubComplianceScore.findOne({ trialId: trial.trialId, siteId });
+      const tId = (trial.condition && trial.nctId) ? `${trial.condition} - ${trial.nctId}` : trial.trialId || trial.id;
+      
+      const currentScoreObj = await HubComplianceScore.findOne({ trialId: tId, siteId });
       const prevScore = currentScoreObj ? currentScoreObj.overallScore : 85;
       
       // Calculate new score based on visits (Mocked for now based on requirement logic)
       // (Visits completed within window / Total scheduled visits)
-      const totalVisits = await HubVisit.countDocuments({ trialId: trial.trialId, siteId });
-      const compliantVisits = await HubVisit.countDocuments({ trialId: trial.trialId, siteId, state: 'standard' });
+      const totalVisits = await HubVisit.countDocuments({ trialId: tId, siteId });
+      const compliantVisits = await HubVisit.countDocuments({ trialId: tId, siteId, state: 'standard' });
       
       let newScore = totalVisits > 0 ? Math.round((compliantVisits / totalVisits) * 100) : 100;
       
@@ -1134,7 +1281,7 @@ exports.assessCompliance = async (req, res) => {
       else if (newScore < 90) band = 'amber';
 
       await HubComplianceScore.findOneAndUpdate(
-        { trialId: trial.trialId, siteId },
+        { trialId: tId, siteId },
         {
           overallScore: newScore,
           healthBand: band,
@@ -1153,9 +1300,9 @@ exports.assessCompliance = async (req, res) => {
       if (wowChange <= -5) {
         await HubComplianceRecommendation.create({
           siteId,
-          trialId: trial.trialId,
+          trialId: tId,
           recommendationType: 'score_drop',
-          text: `Compliance for ${trial.trialId} dropped by ${Math.abs(wowChange)}% this week. Review missed visits.`,
+          text: `Compliance for ${tId} dropped by ${Math.abs(wowChange)}% this week. Review missed visits.`,
           priorityRank: 1
         });
       }

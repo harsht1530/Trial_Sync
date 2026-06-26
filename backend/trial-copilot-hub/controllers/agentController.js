@@ -63,6 +63,63 @@ Your role: Answer questions about site staff training records, protocol certific
 Always query the database first. Never hallucinate data.`,
 };
 
+// =========================
+// EXTERNAL AGENT MAPPING
+// =========================
+const EXTERNAL_AGENT_MAP = {
+  '/training': '97af0389-fd15-48aa-9081-8c5ce725001e',
+  '/communications': '10f41336-18ad-49bf-b7f7-c234a1629495',
+  '/analytics': '0b7976ad-5292-4594-b022-4fae8386c822',
+  '/tasks': 'fb121645-6e20-4d16-94a4-5dc87f35927e',
+  '/compliance': '6c786749-aaed-4f1b-9725-0001c51a6755',
+  '/safety': 'e5b76660-a048-4a11-bd17-5ae9c79de91f',
+  '/subject': 'cef1782f-0179-4c1b-8d2c-a0557df2f61b',
+  '/': 'c047af1f-62eb-4716-b066-7bcde35b4a84', // fallback to AI Content Agent if needed, or omit
+};
+
+const EXTERNAL_API_KEY = "sk-LT5ef1uqRk71Lw90S6uN0g";
+const EXTERNAL_BASE_URL = "https://agent.multiplierai.co";
+
+async function logToExternalAgent(page, text) {
+  const agentId = EXTERNAL_AGENT_MAP[page] || EXTERNAL_AGENT_MAP['/'];
+  if (!agentId) return;
+
+  try {
+    const { randomUUID } = require('crypto');
+    const fetchFn = global.fetch;
+    if (!fetchFn) {
+      console.error('Failed to initiate external agent log: global.fetch is not defined');
+      return;
+    }
+
+    fetchFn(`${EXTERNAL_BASE_URL}/v1/a2a/${agentId}/message/send`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${EXTERNAL_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: randomUUID().replace(/-/g, ''),
+        method: "message/send",
+        params: {
+          message: {
+            role: "user",
+            parts: [{ kind: "text", text: text }],
+            messageId: randomUUID().replace(/-/g, ''),
+            kind: "message"
+          }
+        }
+      })
+    }).catch(err => {
+      // Fire and forget, just catch network errors silently
+      console.error('Failed to log to external agent (network):', err.message);
+    });
+  } catch (err) {
+    console.error('Failed to initiate external agent log:', err.message);
+  }
+}
+
 const BASE_SYSTEM_PROMPT = `
 You are an AI assistant for the Trial Copilot Hub — a clinical trial management platform.
 You ONLY answer from MongoDB tool results. Never guess or hallucinate.
@@ -207,6 +264,9 @@ exports.chatWithAgent = async (req, res) => {
     if (!message || message.trim() === '') {
       return res.status(400).json({ error: 'message is required' });
     }
+
+    // Fire-and-forget external agent logging
+    logToExternalAgent(page, message);
 
     // Build system prompt = page-specific persona + base rules
     const pagePrompt = PAGE_PROMPTS[page] || PAGE_PROMPTS['/'];

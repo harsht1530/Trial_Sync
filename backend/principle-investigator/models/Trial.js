@@ -5,6 +5,12 @@ const trialSchema = new mongoose.Schema({
   id: { type: String }, // Sponsor ID (e.g. "ONCO-2024-A1")
   trialId: { type: String, required: true, unique: true }, // Hub/Unified ID (e.g. "ONCO-2024-A1")
   name: { type: String, required: true },
+  protocolTitle: { type: String },
+  condition: { type: String },
+  nctId: { type: String },
+  nct_id: { type: String },
+  enrollmentTarget: { type: String },
+  recruitmentStatus: { type: String },
   diseaseArea: { type: String, default: 'Oncology' },
   phase: { type: String, required: true },
   status: { type: String, required: true }, // "active", "enrolling", "Recruiting", "On-treatment", "Screening", "Closeout"

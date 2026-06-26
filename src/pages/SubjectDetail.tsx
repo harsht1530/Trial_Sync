@@ -1,4 +1,5 @@
 import { Helmet } from "react-helmet";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -17,26 +18,56 @@ const PatientDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // Mock patient data - in production this would come from an API
-  const patient = {
-    id: id || "P-001",
-    name: "Sarah Johnson",
-    age: 45,
-    gender: "Female",
-    email: "sarah.johnson@email.com",
-    phone: "+1 (555) 123-4567",
-    enrollmentDate: "2024-01-15",
-    trialPhase: "Phase 2",
-    siteId: "SITE-NYC-01",
-    status: "Active",
-    avatar: null,
-    address: "123 Medical Center Drive, New York, NY 10001",
-    emergencyContact: {
-      name: "Michael Johnson",
-      relationship: "Spouse",
-      phone: "+1 (555) 987-6543"
-    }
-  };
+  const [patient, setPatient] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    
+    // In production this would come from an API
+    fetch(`http://localhost:5000/api/subjects/${id}`, {
+      headers: {
+        'Authorization': 'Bearer dummy-token'
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      // Map database schema to frontend expected format
+      const mappedPatient = {
+        id: data.patient_id,
+        name: data.subject_name || "Unknown",
+        age: data.age || 45, // Using virtual or mock
+        gender: data.gender || "Not specified",
+        email: data.contact?.email || "No email",
+        phone: data.contact?.phone || "No phone",
+        enrollmentDate: data.enrollment_date || new Date().toISOString(),
+        trialPhase: data.phase || "Unknown",
+        siteId: data.site || "Unknown Site",
+        status: data.status || "Unknown",
+        avatar: null,
+        address: "Not specified",
+        emergencyContact: {
+          name: data.emergency_contact?.name || "Not specified",
+          relationship: data.emergency_contact?.relationship || "N/A",
+          phone: data.emergency_contact?.phone || "No phone"
+        }
+      };
+      setPatient(mappedPatient);
+      setLoading(false);
+    })
+    .catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, [id]);
+
+  if (loading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
+  }
+  
+  if (!patient) {
+    return <div className="min-h-screen bg-background flex items-center justify-center">Patient not found</div>;
+  }
 
   return (
     <>

@@ -5,6 +5,7 @@ import { PatientProfile as PatientProfileComponent } from "@/components/subject/
 import { MedicalHistory } from "@/components/subject/MedicalHistory";
 import { PatientReminders } from "@/components/subject/SubjectReminders";
 import { WearableData } from "@/components/subject/WearableData";
+import { EPROSubmissions } from "@/components/subject/EPROSubmissions";
 import { Footer } from "@/components/layout/Footer";
 
 import { useParams } from "react-router-dom";
@@ -27,6 +28,14 @@ export function PatientProfile() {
             ...data,
             trialPhase: data.phase,
             siteId: data.site,
+            enrollmentDate: data.enrollmentDate || data.enrollment_date,
+            emergencyContact: data.emergencyContact || {
+              name: data.emergency_contact?.name || "Not specified",
+              relationship: data.emergency_contact?.relationship || "N/A",
+              phone: data.emergency_contact?.phone || "No phone"
+            },
+            email: data.email || data.contact?.email || "",
+            phone: data.phone || data.contact?.phone || ""
           });
         }
         setLoading(false);
@@ -69,7 +78,8 @@ export function PatientProfile() {
                 <MedicalHistory patientId={patient.id} />
                 <WearableData patientId={patient.id} />
               </div>
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-2 space-y-6">
+                <EPROSubmissions patientId={patient.id} />
                 <PatientReminders patientId={patient.id} />
               </div>
             </div>

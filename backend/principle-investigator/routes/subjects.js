@@ -56,7 +56,19 @@ router.get('/:id', async (req, res) => {
     if (!subject) {
       return res.status(404).json({ error: 'Subject not found' });
     }
-    res.json(subject);
+    
+    // Map snake_case database fields to camelCase properties expected by the frontend
+    const subjectObj = subject.toObject();
+    subjectObj.enrollmentDate = subject.enrollment_date;
+    subjectObj.emergencyContact = {
+      name: subject.emergency_contact?.name || 'Not specified',
+      relationship: subject.emergency_contact?.relationship || 'N/A',
+      phone: subject.emergency_contact?.phone || 'No phone'
+    };
+    subjectObj.email = subject.contact?.email || '';
+    subjectObj.phone = subject.contact?.phone || '';
+    
+    res.json(subjectObj);
   } catch (err) {
     console.error('Error fetching subject by ID:', err);
     res.status(500).json({ error: 'Failed to fetch subject' });

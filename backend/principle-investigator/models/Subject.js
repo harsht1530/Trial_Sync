@@ -142,6 +142,7 @@ const subjectSchema = new mongoose.Schema({
   wearable_data: { type: wearableDataSchema },
   adverse_events: { type: [aeSchema], default: [] },
   visit_schedule: { type: Array, default: [] },
+  epro_submissions: { type: Array, default: [] },
   audit: { type: auditSchema, default: () => ({}) }
 }, {
   timestamps: true,

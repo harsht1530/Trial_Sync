@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const DUMMY_NOTIFICATIONS = [
   {
@@ -41,6 +42,7 @@ const DUMMY_NOTIFICATIONS = [
 export function Header() {
   const [unreadCount, setUnreadCount] = useState(3);
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleNotificationOpen = (open: boolean) => {
     if (open) {
@@ -91,7 +93,17 @@ export function Header() {
             <DropdownMenuSeparator />
             <div className="max-h-[300px] overflow-y-auto">
               {DUMMY_NOTIFICATIONS.map((notification) => (
-                <DropdownMenuItem key={notification.id} className="flex flex-col items-start gap-1 p-4 cursor-pointer">
+                <DropdownMenuItem 
+                  key={notification.id} 
+                  className="flex flex-col items-start gap-1 p-4 cursor-pointer"
+                  onClick={() => {
+                    if (notification.title === "Protocol Deviation" || notification.title === "New Enrollment") {
+                      navigate("/subject");
+                    } else if (notification.title === "Deadline Reminder") {
+                      navigate("/validation");
+                    }
+                  }}
+                >
                   <div className="flex w-full justify-between items-start">
                     <span className="font-semibold text-sm">{notification.title}</span>
                     <span className="text-[10px] text-muted-foreground">{notification.time}</span>

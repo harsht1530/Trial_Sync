@@ -32,6 +32,7 @@ const navigation = [
   { id: "communications", name: "Communications", icon: MessageSquare, path: "/communications" },
   { id: "symptoms", name: "Symptoms", icon: Activity, path: "/symptoms" },
   { id: "analytics", name: "Analytics", icon: BarChart3, path: "/analytics" },
+  { id: "compliance", name: "Compliance", icon: Shield, path: "/compliance" },
 ];
 
 const bottomNav = [
@@ -67,6 +68,7 @@ export function SidebarContent({ activeTab: propActiveTab, onTabChange, classNam
     if (location.pathname === "/communications") return "communications";
     if (location.pathname === "/symptoms") return "symptoms";
     if (location.pathname === "/analytics") return "analytics";
+    if (location.pathname === "/compliance") return "compliance";
     return "";
   };
 

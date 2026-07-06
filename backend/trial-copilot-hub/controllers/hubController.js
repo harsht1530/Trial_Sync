@@ -146,7 +146,7 @@ exports.getInsightsAndActivity = async (req, res) => {
       const activeSubjects = await HubSubject.countDocuments({ status: { $in: ['Active', 'active', 'Screening', 'On-treatment'] } });
       
       let activeAECount = 0;
-      const subjects = await HubSubject.find({ site: siteId });
+      const subjects = await HubSubject.find({});
       for (const sub of subjects) {
         for (const ae of sub.adverse_events || []) {
           if (ae.status !== 'Resolved') activeAECount++;
@@ -776,8 +776,8 @@ exports.getSafetySummary = async (req, res) => {
   try {
     const siteId = 'SITE-NY-001'; 
     
-    // Find all subjects at this site
-    const subjects = await HubSubject.find({ site: siteId });
+    // Find all subjects
+    const subjects = await HubSubject.find({});
     
     let activeCount = 0;
     let aiFlaggedCount = 0;
@@ -845,7 +845,7 @@ exports.getSafetyAnomalies = async (req, res) => {
     const siteId = 'SITE-NY-001';
     
     // 1. Gather active AEs
-    const subjects = await HubSubject.find({ site: siteId });
+    const subjects = await HubSubject.find({});
     const activeAEs = [];
     for (const sub of subjects) {
       for (const ae of sub.adverse_events || []) {
@@ -902,7 +902,7 @@ exports.getAEList = async (req, res) => {
     const siteId = 'SITE-NY-001';
     const { status, severity, ai_flagged, trial_id, sort_by } = req.query;
     
-    const subjects = await HubSubject.find({ site: siteId });
+    const subjects = await HubSubject.find({});
     let aes = [];
     let totalCount = 0;
     let flaggedCount = 0;

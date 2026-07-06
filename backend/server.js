@@ -26,6 +26,7 @@ const eproRoutes = require('./principle-investigator/routes/epro');
 const communicationsRoutes = require('./principle-investigator/routes/communications');
 const analyticsRoutes = require('./principle-investigator/routes/analytics');
 const agentRoutes = require('./principle-investigator/routes/agent');
+const complianceRoutes = require('./principle-investigator/routes/compliance');
 
 app.use('/api/subjects', authenticateToken, subjectRoutes);
 app.use('/api/dashboard', authenticateToken, dashboardRoutes);
@@ -34,6 +35,7 @@ app.use('/api/epro', authenticateToken, eproRoutes);
 app.use('/api/communications', authenticateToken, communicationsRoutes);
 app.use('/api/analytics', authenticateToken, analyticsRoutes);
 app.use('/api/agent', authenticateToken, agentRoutes);
+app.use('/api/compliance', authenticateToken, complianceRoutes);
 
 // --- Subject Panel Routes ---
 const subjectPanelProfileRoutes = require('./subject-panel/routes/profile');

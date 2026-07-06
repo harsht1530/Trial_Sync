@@ -11,6 +11,7 @@ import { EPRO } from "./pages/EPRO";
 import { Communications } from "./pages/Communications";
 import { SymptomTracker } from "./pages/SymptomTracker";
 import { Analytics } from "./pages/Analytics";
+import { Compliance } from "./pages/Compliance";
 import NotFound from "./pages/NotFound";
 import { GlobalFloatingChatbot } from "@/components/layout/GlobalFloatingChatbot";
 
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/communications" element={<ProtectedRoute><Communications /></ProtectedRoute>} />
             <Route path="/symptoms" element={<ProtectedRoute><SymptomTracker /></ProtectedRoute>} />
             <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+            <Route path="/compliance" element={<ProtectedRoute><Compliance /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

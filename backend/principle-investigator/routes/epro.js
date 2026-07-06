@@ -5,36 +5,91 @@ const EPROSubmission = require('../models/EPROSubmission');
 
 router.get('/submissions', async (req, res) => {
   try {
-    const { patientId = 'PT-001' } = req.query;
+    const { patientId = 'all' } = req.query;
 
-    // Fetch from Subject document
-    const subject = await Subject.findOne({ patient_id: patientId });
-    let submissions = [];
-    if (subject && subject.epro_submissions) {
-      submissions = [...subject.epro_submissions];
-    }
+    let mergedSubmissions = [];
 
-    // Fetch from EPROSubmission collection
-    const collectionSubmissions = await EPROSubmission.find({ patientId: patientId });
-    
-    // Merge them together
-    const mergedSubmissions = [...submissions];
-    collectionSubmissions.forEach(cs => {
-      const mappedCs = {
-        id: cs.id || cs._id.toString(),
-        formName: cs.formName,
-        trialWeek: cs.trialWeek,
-        phase: cs.trialWeek || "Screening",
-        status: cs.status,
-        submittedAt: cs.submittedAt,
-        score: cs.score,
-        maxScore: cs.maxScore,
-        responses: cs.responses
-      };
-      if (!mergedSubmissions.some(s => s.id === mappedCs.id)) {
-        mergedSubmissions.push(mappedCs);
+    if (patientId === 'all') {
+      // Fetch all subjects to extract their epro_submissions
+      const subjects = await Subject.find({});
+      const subjectsMap = {};
+      
+      subjects.forEach(sub => {
+        subjectsMap[sub.patient_id] = sub.subject_name;
+        if (sub.epro_submissions) {
+          sub.epro_submissions.forEach(s => {
+            mergedSubmissions.push({
+              id: s.id,
+              formName: s.formName,
+              trialWeek: s.trialWeek,
+              phase: s.phase || s.trialWeek || "Screening",
+              status: s.status,
+              submittedAt: s.submittedAt,
+              score: s.score,
+              maxScore: s.maxScore,
+              responses: s.responses,
+              patientId: sub.patient_id,
+              patientName: sub.subject_name
+            });
+          });
+        }
+      });
+
+      // Fetch all from EPROSubmission collection
+      const collectionSubmissions = await EPROSubmission.find({});
+      collectionSubmissions.forEach(cs => {
+        const mappedCs = {
+          id: cs.id || cs._id.toString(),
+          formName: cs.formName,
+          trialWeek: cs.trialWeek,
+          phase: cs.trialWeek || "Screening",
+          status: cs.status,
+          submittedAt: cs.submittedAt,
+          score: cs.score,
+          maxScore: cs.maxScore,
+          responses: cs.responses,
+          patientId: cs.patientId,
+          patientName: subjectsMap[cs.patientId] || cs.patientId
+        };
+        if (!mergedSubmissions.some(s => s.id === mappedCs.id)) {
+          mergedSubmissions.push(mappedCs);
+        }
+      });
+    } else {
+      // Fetch single subject document
+      const subject = await Subject.findOne({ patient_id: patientId });
+      let submissions = [];
+      if (subject && subject.epro_submissions) {
+        submissions = subject.epro_submissions.map(s => ({
+          ...s,
+          patientId: subject.patient_id,
+          patientName: subject.subject_name
+        }));
       }
-    });
+
+      // Fetch from EPROSubmission collection for patient
+      const collectionSubmissions = await EPROSubmission.find({ patientId: patientId });
+      
+      mergedSubmissions = [...submissions];
+      collectionSubmissions.forEach(cs => {
+        const mappedCs = {
+          id: cs.id || cs._id.toString(),
+          formName: cs.formName,
+          trialWeek: cs.trialWeek,
+          phase: cs.trialWeek || "Screening",
+          status: cs.status,
+          submittedAt: cs.submittedAt,
+          score: cs.score,
+          maxScore: cs.maxScore,
+          responses: cs.responses,
+          patientId: cs.patientId,
+          patientName: subject ? subject.subject_name : cs.patientId
+        };
+        if (!mergedSubmissions.some(s => s.id === mappedCs.id)) {
+          mergedSubmissions.push(mappedCs);
+        }
+      });
+    }
 
     // Sort submissions by submittedAt desc
     mergedSubmissions.sort((a, b) => {
@@ -56,7 +111,6 @@ router.get('/submissions', async (req, res) => {
       return new Date(s.submittedAt) >= thirtyDaysAgo;
     }).length;
     
-    // For overdue, just count those marked Overdue (since we don't track deadline on array items strictly in seed)
     const overdue30Days = totalOverdue;
 
     const complianceBase = completed30Days + overdue30Days;

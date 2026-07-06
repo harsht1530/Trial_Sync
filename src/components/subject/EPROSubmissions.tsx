@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { API_BASE_URL } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -29,7 +30,8 @@ import {
   FileText,
   User,
   Calendar,
-  Layers
+  Layers,
+  Loader2
 } from "lucide-react";
 
 interface EPROSubmissionsProps {
@@ -50,6 +52,8 @@ interface Submission {
     type: "choice" | "scale" | "text";
   }[];
   trialWeek?: string;
+  patientId?: string;
+  patientName?: string;
 }
 
 const getDisplayResponses = (responses: any[] = []) => {
@@ -110,6 +114,7 @@ const getDisplayResponses = (responses: any[] = []) => {
 export const EPROSubmissions = ({ patientId }: EPROSubmissionsProps) => {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [showAllSubmissions, setShowAllSubmissions] = useState(false);
+  const { authenticatedFetch } = useAuth();
 
   const [eproStats, setEproStats] = useState({
     completed: 0,
@@ -118,9 +123,11 @@ export const EPROSubmissions = ({ patientId }: EPROSubmissionsProps) => {
     complianceRate: 0
   });
   const [submissionsList, setSubmissionsList] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const fetchSubmissions = () => {
-    fetch(`${API_BASE_URL}/api/epro/submissions?patientId=${patientId}`)
+    setLoading(true);
+    authenticatedFetch(`${API_BASE_URL}/api/epro/submissions?patientId=${patientId}`)
       .then(res => res.json())
       .then(data => {
         setSubmissionsList(data.submissions || []);
@@ -133,7 +140,8 @@ export const EPROSubmissions = ({ patientId }: EPROSubmissionsProps) => {
           });
         }
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
@@ -245,6 +253,7 @@ export const EPROSubmissions = ({ patientId }: EPROSubmissionsProps) => {
             <TableHeader>
               <TableRow className="bg-muted/30">
                 <TableHead>Form Name</TableHead>
+                {patientId === "all" && <TableHead>Subject</TableHead>}
                 <TableHead>Phase</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Submitted</TableHead>
@@ -253,7 +262,23 @@ export const EPROSubmissions = ({ patientId }: EPROSubmissionsProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {displayedSubmissions.map((submission) => (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={patientId === "all" ? 7 : 6} className="text-center py-10 text-muted-foreground">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading submissions...
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : displayedSubmissions.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={patientId === "all" ? 7 : 6} className="text-center py-10 text-muted-foreground">
+                    No ePRO submissions found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+              displayedSubmissions.map((submission) => (
                 <TableRow key={submission.id} className="hover:bg-muted/20">
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -261,6 +286,13 @@ export const EPROSubmissions = ({ patientId }: EPROSubmissionsProps) => {
                       <span className="font-medium">{submission.formName}</span>
                     </div>
                   </TableCell>
+                  {patientId === "all" && (
+                    <TableCell>
+                      <div className="font-semibold text-sm">
+                        {submission.patientId}
+                      </div>
+                    </TableCell>
+                  )}
                   <TableCell>
                     <Badge variant="outline" className="text-xs">
                       {submission.phase || submission.trialWeek}
@@ -320,7 +352,7 @@ export const EPROSubmissions = ({ patientId }: EPROSubmissionsProps) => {
                               <p className="text-xs text-muted-foreground flex items-center gap-1">
                                 <User className="h-3 w-3" /> Subject ID
                               </p>
-                              <p className="text-sm font-semibold">{patientId}</p>
+                              <p className="text-sm font-semibold">{submission.patientId || patientId}</p>
                             </div>
                             <div className="space-y-1">
                               <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -373,7 +405,7 @@ export const EPROSubmissions = ({ patientId }: EPROSubmissionsProps) => {
                     </Dialog>
                   </TableCell>
                 </TableRow>
-              ))}
+              )))}
             </TableBody>
           </Table>
         </div>

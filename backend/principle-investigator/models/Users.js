@@ -33,7 +33,12 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['Site Incharge', 'Principal Investigator', 'Subject', 'Site Coordinator'], default: 'Principal Investigator' },
   scheduled_reminders: { type: [reminderSchema], default: [] },
   recent_call_history: { type: [callHistorySchema], default: [] },
-  conversationsHistory: { type: mongoose.Schema.Types.Mixed, default: {} }
+  conversationsHistory: { type: mongoose.Schema.Types.Mixed, default: {} },
+  Trial_id: { type: String },
+  subject_id: { type: String },
+  trialId: { type: String },
+  subjectId: { type: String },
+  patient_id: { type: String }
 }, { 
   timestamps: true,
   collection: 'Users'

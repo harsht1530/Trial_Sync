@@ -52,6 +52,61 @@ interface Submission {
   trialWeek?: string;
 }
 
+const getDisplayResponses = (responses: any[] = []) => {
+  const standardQuestions = [
+    "How would you rate your overall energy level today?",
+    "Have you experienced any nausea in the past 24 hours?",
+    "How well did you sleep last night?",
+    "Have you noticed any changes in appetite?",
+    "Rate your pain level right now:"
+  ];
+
+  if (responses.length >= 5) {
+    return responses;
+  }
+
+  const displayList: { question: string; answer: string }[] = [];
+  const usedExistingIndices = new Set<number>();
+
+  standardQuestions.forEach(sq => {
+    const matchIndex = responses.findIndex((r, idx) => {
+      if (usedExistingIndices.has(idx)) return false;
+      const qText = r.question.toLowerCase();
+      const sqText = sq.toLowerCase();
+      if (sqText.includes("energy") && (qText.includes("energy") || qText.includes("fatigue"))) return true;
+      if (sqText.includes("nausea") && (qText.includes("nausea") || qText.includes("dizziness"))) return true;
+      if (sqText.includes("sleep") && qText.includes("sleep")) return true;
+      if (sqText.includes("appetite") && qText.includes("appetite")) return true;
+      if (sqText.includes("pain") && qText.includes("pain")) return true;
+      return false;
+    });
+
+    if (matchIndex !== -1) {
+      displayList.push({
+        question: sq,
+        answer: responses[matchIndex].answer
+      });
+      usedExistingIndices.add(matchIndex);
+    } else {
+      displayList.push({
+        question: sq,
+        answer: "No response"
+      });
+    }
+  });
+
+  responses.forEach((r, idx) => {
+    if (!usedExistingIndices.has(idx)) {
+      displayList.push({
+        question: r.question,
+        answer: r.answer
+      });
+    }
+  });
+
+  return displayList;
+};
+
 export const EPROSubmissions = ({ patientId }: EPROSubmissionsProps) => {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [showAllSubmissions, setShowAllSubmissions] = useState(false);
@@ -294,9 +349,9 @@ export const EPROSubmissions = ({ patientId }: EPROSubmissionsProps) => {
                           {/* Responses Section */}
                           <div className="space-y-4">
                             <h3 className="font-semibold text-lg border-b pb-2">Patient Responses</h3>
-                            {submission.responses && submission.responses.length > 0 ? (
+                            {submission.responses ? (
                               <div className="space-y-4">
-                                {submission.responses.map((response, index) => (
+                                {getDisplayResponses(submission.responses).map((response, index) => (
                                   <div key={index} className="space-y-2 group">
                                     <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
                                       {index + 1}. {response.question}

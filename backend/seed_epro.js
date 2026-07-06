@@ -10,21 +10,11 @@ const mockEproSubmission = {
   maxScore: 100,
   phase: "Screening",
   responses: [
-    {
-      question: "How would you rate your overall fatigue today?",
-      answer: "Mild",
-      type: "choice"
-    },
-    {
-      question: "Any new symptoms to report?",
-      answer: "Slight headache in the morning.",
-      type: "text"
-    },
-    {
-      question: "Pain scale (1-10)",
-      answer: "3",
-      type: "scale"
-    }
+    { question: "How would you rate your overall energy level today?", answer: "Moderate", type: "choice" },
+    { question: "Have you experienced any nausea in the past 24 hours?", answer: "None", type: "choice" },
+    { question: "How well did you sleep last night?", answer: "Well", type: "choice" },
+    { question: "Have you noticed any changes in appetite?", answer: "No change", type: "choice" },
+    { question: "Rate your pain level right now:", answer: "Mild", type: "choice" }
   ]
 };
 
@@ -35,7 +25,7 @@ async function seedEpro() {
 
     const result = await Subject.updateOne(
       { patient_id: "VIJA-1602" },
-      { $push: { epro_submissions: mockEproSubmission } }
+      { $set: { epro_submissions: [mockEproSubmission] } }
     );
     
     if (result.matchedCount > 0) {

@@ -332,7 +332,7 @@ exports.addSubject = async (req, res) => {
 
     // Save subject to Clinical_Trial_Subject_Master
     const newSubject = await HubSubject.create({
-      piId: trial.piId || "PI-001",
+      piId: trial.id || trial.trialId || "PI-001",
       patient_id: subjectId,
       subject_name: subject_name,
       trial: formattedTrialName,

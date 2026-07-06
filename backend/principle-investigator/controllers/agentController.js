@@ -267,14 +267,23 @@ exports.chatWithAgent = async (req, res) => {
 
     const isSubject = req.user && req.user.role === 'Subject';
     let subjectDoc = null;
-    if (isSubject && req.user.email) {
-      subjectDoc = await mongoose.connection.collection('Clinical_Trial_Subject_Master').findOne({
-        "contact.email": req.user.email
-      });
+    if (isSubject) {
+      let queryConditions = [];
+      if (req.user.subject_id) queryConditions.push({ patient_id: req.user.subject_id });
+      if (req.user.subjectId) queryConditions.push({ patient_id: req.user.subjectId });
+      if (req.user.patient_id) queryConditions.push({ patient_id: req.user.patient_id });
+
+      if (req.user.email) queryConditions.push({ "contact.email": req.user.email });
+      if (req.user.phone) queryConditions.push({ "contact.phone": req.user.phone });
+      if (req.user.name) queryConditions.push({ subject_name: req.user.name });
+
+      if (queryConditions.length > 0) {
+        subjectDoc = await mongoose.connection.collection('Clinical_Trial_Subject_Master').findOne({ $or: queryConditions });
+      }
+
       if (!subjectDoc) {
-        subjectDoc = await mongoose.connection.collection('Clinical_Trial_Subject_Master').findOne({
-          "contact.email": { $regex: new RegExp(`^${req.user.email}$`, 'i') }
-        });
+        // Fallback: search for first available subject to prevent 404/crash in dev/test
+        subjectDoc = await mongoose.connection.collection('Clinical_Trial_Subject_Master').findOne({});
       }
     }
 

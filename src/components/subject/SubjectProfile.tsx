@@ -3,6 +3,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import {
   User,
   Mail,
   Phone,
@@ -83,14 +96,91 @@ export const PatientProfile = ({ patient }: PatientProfileProps) => {
           </div>
 
           <div className="flex gap-2 pb-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Message
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Edit className="h-4 w-4" />
-              Edit
-            </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Message
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Message Subject</DialogTitle>
+                  <DialogDescription>
+                    Send a message to {patient.name}. They will receive it via their preferred contact method.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="message">Message</Label>
+                    <Textarea
+                      id="message"
+                      placeholder="Type your message here..."
+                      className="min-h-[100px]"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => toast.success("Message sent successfully")}>Send Message</Button>
+                  </DialogTrigger>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Edit className="h-4 w-4" />
+                  Edit
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Edit Subject</DialogTitle>
+                  <DialogDescription>
+                    Make changes to the subject's profile here. Click save when you're done.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">
+                      Name
+                    </Label>
+                    <Input
+                      id="name"
+                      defaultValue={patient.name}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="status" className="text-right">
+                      Status
+                    </Label>
+                    <Input
+                      id="status"
+                      defaultValue={patient.status}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="phone" className="text-right">
+                      Phone
+                    </Label>
+                    <Input
+                      id="phone"
+                      defaultValue={patient.phone}
+                      className="col-span-3"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => toast.success("Profile updated successfully")}>Save changes</Button>
+                  </DialogTrigger>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </CardHeader>

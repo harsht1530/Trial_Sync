@@ -47,9 +47,9 @@ const seedData = async () => {
 
     console.log('Seeding Trials...');
     const trials = await Trial.insertMany([
-      { piId: PI_ID, id: "ONCO-22", name: "Solid Tumor Phase II", phase: "II", status: "active", patients: 145, target: 200, progress: 72, sites: 4, startDate: "2024-01-15" },
-      { piId: PI_ID, id: "CARDIO-09", name: "Chronic Heart Failure", phase: "III", status: "active", patients: 82, target: 150, progress: 54, sites: 3, startDate: "2024-02-10" },
-      { piId: PI_ID, id: "NEURO-14", name: "Alzheimer's Early Detection", phase: "IV", status: "enrolling", patients: 28, target: 100, progress: 28, sites: 2, startDate: "2024-03-01" },
+      { piId: PI_ID, id: "ONCO-22", trialId: "ONCO-22", name: "Solid Tumor Phase II", phase: "II", status: "active", patients: 145, target: 200, progress: 72, sites: 4, startDate: "2024-01-15" },
+      { piId: PI_ID, id: "CARDIO-09", trialId: "CARDIO-09", name: "Chronic Heart Failure", phase: "III", status: "active", patients: 82, target: 150, progress: 54, sites: 3, startDate: "2024-02-10" },
+      { piId: PI_ID, id: "NEURO-14", trialId: "NEURO-14", name: "Alzheimer's Early Detection", phase: "IV", status: "enrolling", patients: 28, target: 100, progress: 28, sites: 2, startDate: "2024-03-01" },
     ]);
 
     console.log('Seeding Summary...');
@@ -278,8 +278,11 @@ const seedData = async () => {
             score: 7,
             maxScore: 10,
             responses: [
-              { question: "How would you rate your fatigue today?", answer: "3 (Moderate)", type: "scale" },
-              { question: "Did you experience any dizziness?", answer: "No", type: "choice" }
+              { question: "How would you rate your overall energy level today?", answer: "Moderate", type: "choice" },
+              { question: "Have you experienced any nausea in the past 24 hours?", answer: "None", type: "choice" },
+              { question: "How well did you sleep last night?", answer: "Well", type: "choice" },
+              { question: "Have you noticed any changes in appetite?", answer: "No change", type: "choice" },
+              { question: "Rate your pain level right now:", answer: "Mild", type: "choice" }
             ]
         },
         {
@@ -292,8 +295,11 @@ const seedData = async () => {
             score: 8,
             maxScore: 10,
             responses: [
-              { question: "How would you rate your fatigue today?", answer: "2 (Mild)", type: "scale" },
-              { question: "Did you experience any dizziness?", answer: "No", type: "choice" }
+              { question: "How would you rate your overall energy level today?", answer: "High", type: "choice" },
+              { question: "Have you experienced any nausea in the past 24 hours?", answer: "None", type: "choice" },
+              { question: "How well did you sleep last night?", answer: "Very well", type: "choice" },
+              { question: "Have you noticed any changes in appetite?", answer: "No change", type: "choice" },
+              { question: "Rate your pain level right now:", answer: "No pain", type: "choice" }
             ]
         },
         {

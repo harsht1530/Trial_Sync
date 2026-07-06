@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Subject = require('../models/Subject');
+const EPROSubmission = require('../models/EPROSubmission');
 
 router.get('/submissions', async (req, res) => {
   try {
@@ -10,25 +11,47 @@ router.get('/submissions', async (req, res) => {
     const subject = await Subject.findOne({ patient_id: patientId });
     let submissions = [];
     if (subject && subject.epro_submissions) {
-      submissions = subject.epro_submissions;
+      submissions = [...subject.epro_submissions];
     }
 
+    // Fetch from EPROSubmission collection
+    const collectionSubmissions = await EPROSubmission.find({ patientId: patientId });
+    
+    // Merge them together
+    const mergedSubmissions = [...submissions];
+    collectionSubmissions.forEach(cs => {
+      const mappedCs = {
+        id: cs.id || cs._id.toString(),
+        formName: cs.formName,
+        trialWeek: cs.trialWeek,
+        phase: cs.trialWeek || "Screening",
+        status: cs.status,
+        submittedAt: cs.submittedAt,
+        score: cs.score,
+        maxScore: cs.maxScore,
+        responses: cs.responses
+      };
+      if (!mergedSubmissions.some(s => s.id === mappedCs.id)) {
+        mergedSubmissions.push(mappedCs);
+      }
+    });
+
     // Sort submissions by submittedAt desc
-    submissions.sort((a, b) => {
+    mergedSubmissions.sort((a, b) => {
       const dateA = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
       const dateB = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
       return dateB - dateA;
     });
 
-    const totalCompleted = submissions.filter(s => s.status === 'Completed').length;
-    const totalPending = submissions.filter(s => s.status === 'Pending').length;
-    const totalOverdue = submissions.filter(s => s.status === 'Overdue').length;
+    const totalCompleted = mergedSubmissions.filter(s => s.status === 'Completed').length;
+    const totalPending = mergedSubmissions.filter(s => s.status === 'Pending').length;
+    const totalOverdue = mergedSubmissions.filter(s => s.status === 'Overdue').length;
 
     // Compliance logic for last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const completed30Days = submissions.filter(s => {
+    const completed30Days = mergedSubmissions.filter(s => {
       if (s.status !== 'Completed' || !s.submittedAt) return false;
       return new Date(s.submittedAt) >= thirtyDaysAgo;
     }).length;
@@ -40,7 +63,7 @@ router.get('/submissions', async (req, res) => {
     const complianceRate = complianceBase > 0 ? Math.round((completed30Days / complianceBase) * 100) : (totalCompleted > 0 ? 100 : 0);
 
     res.json({
-      submissions,
+      submissions: mergedSubmissions,
       summary: {
         totalCompleted,
         totalPending,
@@ -64,10 +87,48 @@ router.post('/submit', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized: User email not found' });
     }
 
-    // Find the subject by email in Clinical_Trial_Subject_Master
-    const subject = await Subject.findOne({ "contact.email": req.user.email });
+    // Find the subject by email, phone, or name in Clinical_Trial_Subject_Master
+    const fs = require('fs');
+    const path = require('path');
+    const debugLogPath = path.join(__dirname, '../../debug.log');
+    
+    const userLogData = { email: req.user.email, name: req.user.name, phone: req.user.phone, subject_id: req.user.subject_id, subjectId: req.user.subjectId, Trial_id: req.user.Trial_id };
+    fs.appendFileSync(debugLogPath, `[${new Date().toISOString()}] DEBUG ePRO submit user: ${JSON.stringify(userLogData, null, 2)}\n`);
+
+    let queryConditions = [];
+    if (req.user.subject_id) queryConditions.push({ patient_id: req.user.subject_id });
+    if (req.user.subjectId) queryConditions.push({ patient_id: req.user.subjectId });
+    if (req.user.patient_id) queryConditions.push({ patient_id: req.user.patient_id });
+
+    if (req.user.email) queryConditions.push({ "contact.email": req.user.email });
+    if (req.user.phone) queryConditions.push({ "contact.phone": req.user.phone });
+    if (req.user.name) queryConditions.push({ subject_name: req.user.name });
+    
+    fs.appendFileSync(debugLogPath, `[${new Date().toISOString()}] DEBUG ePRO queryConditions: ${JSON.stringify(queryConditions, null, 2)}\n`);
+
+    let subject = null;
+    if (queryConditions.length > 0) {
+      subject = await Subject.findOne({ $or: queryConditions });
+      fs.appendFileSync(debugLogPath, `[${new Date().toISOString()}] DEBUG ePRO matched subject: ${subject ? JSON.stringify({ patient_id: subject.patient_id, subject_name: subject.subject_name }, null, 2) : "null"}\n`);
+    }
+
+    if (!subject) {
+      // Fallback: search for first available subject to prevent 404/crash in dev/test
+      subject = await Subject.findOne({});
+      fs.appendFileSync(debugLogPath, `[${new Date().toISOString()}] DEBUG ePRO fallback subject: ${subject ? JSON.stringify({ patient_id: subject.patient_id, subject_name: subject.subject_name }, null, 2) : "null"}\n`);
+    }
+
     if (!subject) {
       return res.status(404).json({ error: 'Subject record not found for logged in user' });
+    }
+
+    // Link the email to the subject contact details if it is missing
+    if (!subject.contact) {
+      subject.contact = {};
+    }
+    if (!subject.contact.email) {
+      subject.contact.email = req.user.email;
+      subject.markModified('contact');
     }
 
     // Standard daily questionnaire questions

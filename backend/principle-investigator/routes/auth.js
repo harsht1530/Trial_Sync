@@ -107,6 +107,17 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid email or password' });
     }
 
+    if (user.role === 'Subject') {
+      const Subject = require('../models/Subject');
+      if (!user.subject_id) {
+        return res.status(403).json({ error: 'Subject not added' });
+      }
+      const subjectRecord = await Subject.findOne({ patient_id: user.subject_id });
+      if (!subjectRecord) {
+        return res.status(403).json({ error: 'Subject not added' });
+      }
+    }
+
     const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
     const { password: _, ...userWithoutPassword } = user.toObject();
 
@@ -187,6 +198,17 @@ router.post('/google', async (req, res) => {
       // Link Google Account to existing user
       user.googleId = googleId;
       await user.save();
+    }
+
+    if (user.role === 'Subject') {
+      const Subject = require('../models/Subject');
+      if (!user.subject_id) {
+        return res.status(403).json({ error: 'Subject not added' });
+      }
+      const subjectRecord = await Subject.findOne({ patient_id: user.subject_id });
+      if (!subjectRecord) {
+        return res.status(403).json({ error: 'Subject not added' });
+      }
     }
 
     const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });

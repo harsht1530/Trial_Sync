@@ -126,7 +126,7 @@ const subjectSchema = new mongoose.Schema({
   risk: { type: String, enum: ['High', 'Medium', 'Low'], required: true },
   last_activity: { type: String },
   enrollment_date: { type: String },
-  phase: { type: String, enum: ['Screening', 'Treatment', 'Follow-up'], required: true },
+  phase: { type: String, enum: ['Screening', 'Treatment', 'Follow-up', 'Consented', 'On-treatment'], required: true },
   contact: {
     phone: { type: String },
     email: { type: String }

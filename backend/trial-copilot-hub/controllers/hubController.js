@@ -18,6 +18,7 @@ const { OpenAI } = require('openai');
 const openai = new OpenAI({
   baseURL: (process.env.OPENAI_BASE_URL || 'https://ollama.com/v1').trim(),
   apiKey: (process.env.OPENAI_API_KEY || '').trim(),
+  timeout: 5000,
 });
 
 const MODEL = (process.env.AI_AGENT_MODEL || 'gpt-oss:120b-cloud').trim();
@@ -164,8 +165,15 @@ exports.getInsightsAndActivity = async (req, res) => {
 
       const responseText = completion.choices[0].message.content.trim().replace(/```json/g, '').replace(/```/g, '');
       const aiParsed = JSON.parse(responseText);
-      insightsData = aiParsed.insights || [];
-      actionsData = aiParsed.actions || [];
+      insightsData = (aiParsed.insights || []).map(ins => ({
+        ...ins,
+        text: ins.text || ins.description || ins.message || "Site insight loaded."
+      }));
+      actionsData = (aiParsed.actions || []).map(act => ({
+        ...act,
+        label: act.label || act.title || act.description || "Review task",
+        type: act.type || 'review'
+      }));
     } catch (error) {
       console.error("AI Insights Generation failed:", error);
       // Fallback to DB
